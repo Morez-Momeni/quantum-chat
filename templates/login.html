@@ -35,10 +35,13 @@
         const passwordInput = document.getElementById("password");
         const loginBtn = document.getElementById("loginBtn");
         const error = document.getElementById("error");
-        const username = "{{ username }}".trim();
 
-        if (!username) {
-            alert("نام کاربری نامعتبر!");
+        // دریافت و فیلتر کردن username
+        let rawUsername = "{{ username }}".trim();
+        const cleanUsername = rawUsername.replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '').trim();
+
+        if (!cleanUsername || cleanUsername.length < 1) {
+            alert("نام کاربری معتبر نیست!");
             window.location.href = "/";
         }
 
@@ -52,7 +55,7 @@
             error.textContent = "";
 
             try {
-                const res = await fetch(`/login/${encodeURIComponent(username)}`, {
+                const res = await fetch(`/login/${encodeURIComponent(cleanUsername)}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
                     body: `password=${encodeURIComponent(password)}`
@@ -61,7 +64,7 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    localStorage.setItem("username", username);
+                    localStorage.setItem("username", cleanUsername);
                     window.location.href = "/chat";
                 } else {
                     error.textContent = data.error || "رمز اشتباه است!";
