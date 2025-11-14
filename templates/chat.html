@@ -35,18 +35,10 @@
 
         canvas { position: fixed; top: 0; left: 0; z-index: 1; pointer-events: none; }
 
-        .chat-app {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            max-width: 100vw;
-            z-index: 10;
-        }
+        .chat-app { display: flex; flex-direction: column; height: 100vh; max-width: 100vw; z-index: 10; }
 
         .chat-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: flex; justify-content: space-between; align-items: center;
             padding: clamp(0.8rem, 3vw, 1.2rem) clamp(1rem, 4vw, 1.5rem);
             background: rgba(10, 10, 30, 0.8);
             backdrop-filter: blur(12px);
@@ -63,15 +55,7 @@
         .status-indicator { width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
         #online-count { font-size: clamp(0.8rem, 2.5vw, 0.95rem); color: var(--text-muted); }
 
-        .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: clamp(0.8rem, 2vw, 1.2rem);
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-            scrollbar-width: thin;
-        }
+        .messages-container { flex: 1; overflow-y: auto; padding: clamp(0.8rem, 2vw, 1.2rem); display: flex; flex-direction: column; gap: 0.8rem; scrollbar-width: thin; }
 
         .message { max-width: 85%; align-self: flex-start; }
         .message.mine { align-self: flex-end; }
@@ -85,11 +69,7 @@
             box-shadow: var(--shadow);
         }
 
-        .message.mine .message-bubble {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            border: none;
-        }
+        .message.mine .message-bubble { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; }
 
         .message-sender { font-size: clamp(0.75rem, 2.2vw, 0.85rem); color: var(--primary); font-weight: 600; margin-bottom: 0.3rem; }
         .message-text { font-size: clamp(0.95rem, 3.5vw, 1.1rem); line-height: 1.5; word-wrap: break-word; }
@@ -148,7 +128,7 @@
             bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 0, 0, 0.8);
+            background: #3b82f6;
             color: white;
             padding: 0.5rem 1rem;
             border-radius: 20px;
@@ -204,15 +184,17 @@
     <script>
         const username = localStorage.getItem("username");
         if (!username) {
-        alert("لطفاً ابتدا وارد حساب کاربری خود شوید.");
-        window.location.href = "/";
-        throw new Error("No username in localStorage"); // متوقف کردن اسکریپت
+            alert("لطفاً ابتدا وارد حساب خود شوید!");
+            window.location.href = "/";
+            throw new Error("No username");
         }
+
+        document.querySelector(".header-title p").textContent = `خوش آمدی، ${username}`;
 
         let ws;
         let keepAliveInterval;
         let reconnectAttempts = 0;
-        const maxReconnect = 5;
+        const maxReconnect = 10;
 
         const messages = document.getElementById("messages");
         const input = document.getElementById("messageInput");
@@ -224,44 +206,38 @@
         let typingTimer;
         const onlineUsers = new Set();
 
-        // اتصال WebSocket
+        function showStatus(msg, type = "info") {
+            connStatus.textContent = msg;
+            connStatus.style.display = "block";
+            connStatus.style.background = type === "success" ? "#10b981" : type === "error" ? "#ef4444" : type === "warning" ? "#f59e0b" : "#3b82f6";
+            setTimeout(() => { if (connStatus.textContent === msg) connStatus.style.display = "none"; }, 3000);
+        }
+
         function connectWebSocket() {
             if (reconnectAttempts >= maxReconnect) {
-                showStatus("اتصال ناموفق. صفحه را رفرش کنید.", "error");
+                showStatus("اتصال ناموفق", "error");
                 return;
             }
+            showStatus("در حال اتصال...", "warning");
 
-            ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${username}`);
+            ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${encodeURIComponent(username)}`);
 
             ws.onopen = () => {
                 reconnectAttempts = 0;
-                showStatus("متصل شد", "success");
-                setTimeout(() => connStatus.style.display = 'none', 1000);
-
+                showStatus("متصل شدی!", "success");
                 keepAliveInterval = setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: 'ping' }));
-                    }
+                    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
                 }, 30000);
             };
 
             ws.onmessage = (event) => {
                 let data;
                 try { data = JSON.parse(event.data); } catch { return; }
-
                 if (data.type === "pong") return;
 
-                if (data.type === "message") {
-                    addMessage(data.sender, data.text, data.sender === username);
-                }
-                else if (data.type === "join") {
-                    onlineUsers.add(data.username);
-                    if (data.username !== username) addSystemMessage(`${data.username} وارد چت شد`);
-                }
-                else if (data.type === "leave") {
-                    onlineUsers.delete(data.username);
-                    addSystemMessage(`${data.username} چت را ترک کرد`);
-                }
+                if (data.type === "message") addMessage(data.sender, data.text, data.sender === username);
+                else if (data.type === "join") { onlineUsers.add(data.username); if (data.username !== username) addSystemMessage(`${data.username} وارد چت شد`); }
+                else if (data.type === "leave") { onlineUsers.delete(data.username); addSystemMessage(`${data.username} چت را ترک کرد`); }
                 else if (data.type === "typing") {
                     if (data.username !== username) {
                         typingEl.style.display = 'flex';
@@ -272,27 +248,17 @@
                 updateOnlineCount();
             };
 
-            ws.onerror = () => {
-                showStatus("خطا در اتصال", "error");
-            };
-
+            ws.onerror = () => showStatus("خطا در اتصال", "error");
             ws.onclose = () => {
                 clearInterval(keepAliveInterval);
-                showStatus("اتصال قطع شد. در حال اتصال مجدد...", "warning");
+                showStatus("اتصال قطع شد. تلاش مجدد...", "warning");
                 reconnectAttempts++;
                 setTimeout(connectWebSocket, 2000 * reconnectAttempts);
             };
         }
 
-        function showStatus(msg, type) {
-            connStatus.textContent = msg;
-            connStatus.style.display = 'block';
-            connStatus.style.background = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#f59e0b';
-        }
-
         connectWebSocket();
 
-        // پس‌زمینه
         const canvas = document.getElementById('quantum-bg');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
@@ -325,19 +291,15 @@
             requestAnimationFrame(animate);
         }
         animate();
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
 
-        // توابع
         function addMessage(sender, text, isMine) {
             const msg = document.createElement("div");
             msg.className = `message ${isMine ? 'mine' : 'other'}`;
             const time = new Date().toLocaleTimeString('fa-IR', {hour: '2-digit', minute: '2-digit'});
             msg.innerHTML = `
                 <div class="message-bubble">
-                    ${!isMine ? `<div class="message-sender">${sender}<//miv>` : ''}
+                    ${!isMine ? `<div class="message-sender">${sender}</div>` : ''}
                     <div class="message-text">${escapeHtml(text)}</div>
                     <div class="message-time">${time}</div>
                 </div>
@@ -364,16 +326,11 @@
             messages.scrollTop = messages.scrollHeight;
         }
 
-        function updateOnlineCount() {
-            onlineCount.textContent = `${onlineUsers.size} آنلاین`;
-        }
+        function updateOnlineCount() { onlineCount.textContent = `${onlineUsers.size} آنلاین`; }
 
         function sendMessage() {
             const text = input.value.trim();
-            if (!text || !ws || ws.readyState !== WebSocket.OPEN) {
-                console.warn("WebSocket is not open:", ws?.readyState);
-                return;
-            }
+            if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
             try {
                 ws.send(text);
                 addMessage(username, text, true);
@@ -382,8 +339,7 @@
                 clearTimeout(typingTimer);
                 typingEl.style.display = 'none';
             } catch (err) {
-                showStatus("خطا در ارسال پیام", "error");
-                console.error(err);
+                showStatus("خطا در ارسال", "error");
             }
         }
 
@@ -400,12 +356,8 @@
             sendBtn.disabled = !hasText || !isConnected;
         }
 
-        // رویدادها
         sendBtn.addEventListener("click", sendMessage);
-        input.addEventListener("input", () => {
-            toggleSendButton();
-            sendTyping();
-        });
+        input.addEventListener("input", () => { toggleSendButton(); sendTyping(); });
         input.addEventListener("keydown", e => {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -413,10 +365,8 @@
             }
         });
 
-        // بررسی اولیه
         setInterval(toggleSendButton, 500);
         toggleSendButton();
     </script>
 </body>
 </html>
-
