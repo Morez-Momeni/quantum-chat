@@ -45,7 +45,7 @@
         const username = localStorage.getItem("username");
         if (!username) window.location.href = "/";
 
-        const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${username}`);
+        const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/${username}`);
         const messages = document.getElementById("messages");
         const input = document.getElementById("messageInput");
         const sendBtn = document.getElementById("sendBtn");
@@ -203,4 +203,5 @@
         toggleSendButton();
     </script>
 </body>
+
 </html>
