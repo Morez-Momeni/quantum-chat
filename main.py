@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 import json
 from typing import Dict
 
-from users import users
+from users import users  # فرض: users.py وجود داره
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -23,16 +23,15 @@ class ConnectionManager:
         self.active_connections.pop(username, None)
 
     async def broadcast(self, message: str, exclude: str = None):
-        dead_usernames = []
+        dead = []
         for username, conn in self.active_connections.items():
-            if exclude and username == exclude:
-                continue
+            if exclude and username == exclude: continue
             try:
                 await conn.send_text(message)
-            except Exception:
-                dead_usernames.append(username)
-        for username in dead_usernames:
-            self.disconnect(username)
+            except:
+                dead.append(username)
+        for u in dead:
+            self.disconnect(u)
 
 manager = ConnectionManager()
 
@@ -42,14 +41,19 @@ async def home(request: Request):
 
 @app.get("/login/{username}", response_class=HTMLResponse)
 async def login_page(request: Request, username: str):
-    if username not in users:
+    # فیلتر در سرور
+    clean_username = ''.join(c for c in username if c.isalnum() or c in 'آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی ')
+    clean_username = clean_username.strip()
+    if not clean_username or clean_username not in users:
         return HTMLResponse("کاربر پیدا نشد!", status_code=404)
-    return templates.TemplateResponse("login.html", {"request": request, "username": username})
+    return templates.TemplateResponse("login.html", {"request": request, "username": clean_username})
 
 @app.post("/login/{username}")
 async def login(username: str, password: str = Form()):
-    if username in users and users[username]["password"] == password:
-        return {"success": True, "username": username}
+    clean_username = ''.join(c for c in username if c.isalnum() or c in 'آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی ')
+    clean_username = clean_username.strip()
+    if clean_username in users and users[clean_username]["password"] == password:
+        return {"success": True}
     return {"success": False, "error": "رمز اشتباه است!"}
 
 @app.get("/chat", response_class=HTMLResponse)
@@ -58,8 +62,15 @@ async def chat_page(request: Request):
 
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
-    await manager.connect(username, websocket)
-    await manager.broadcast(json.dumps({"type": "join", "username": username}), exclude=username)
+    # فیلتر نهایی
+    clean_username = ''.join(c for c in username if c.isalnum() or c in 'آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی ')
+    clean_username = clean_username.strip()
+    if not clean_username or clean_username not in users:
+        await websocket.close(code=1008, reason="Invalid username")
+        return
+
+    await manager.connect(clean_username, websocket)
+    await manager.broadcast(json.dumps({"type": "join", "username": clean_username}), exclude=clean_username)
 
     try:
         while True:
@@ -73,17 +84,15 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 try:
                     msg = json.loads(data)
                     if msg.get("type") == "typing":
-                        await manager.broadcast(json.dumps({"type": "typing", "username": username}), exclude=username)
+                        await manager.broadcast(json.dumps({"type": "typing", "username": clean_username}), exclude=clean_username)
                         continue
-                except:
-                    pass
+                except: pass
 
             await manager.broadcast(json.dumps({
                 "type": "message",
-                "sender": username,
+                "sender": clean_username,
                 "text": data
             }))
-
     except WebSocketDisconnect:
-        manager.disconnect(username)
-        await manager.broadcast(json.dumps({"type": "leave", "username": username}), exclude=username)
+        manager.disconnect(clean_username)
+        await manager.broadcast(json.dumps({"type": "leave", "username": clean_username}), exclude=clean_username)
