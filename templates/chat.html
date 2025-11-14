@@ -139,9 +139,23 @@
             transition: all 0.3s;
         }
 
-        .send-button:disabled { background: var(--text-muted); cursor: not-allowed; }
+        .send-button:disabled { background: #555; cursor: not-allowed; opacity: 0.5; }
         .send-button:not(:disabled):hover { background: var(--accent); transform: scale(1.1); }
         .send-button svg { width: 55%; height: 55%; fill: white; }
+
+        .connection-status {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            z-index: 100;
+            display: none;
+        }
 
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         @keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
@@ -185,17 +199,41 @@
         </div>
     </div>
 
+    <div class="connection-status" id="connStatus">در حال اتصال...</div>
+
     <script>
         const username = localStorage.getItem("username");
         if (!username) window.location.href = "/";
 
         let ws;
         let keepAliveInterval;
+        let reconnectAttempts = 0;
+        const maxReconnect = 5;
 
+        const messages = document.getElementById("messages");
+        const input = document.getElementById("messageInput");
+        const sendBtn = document.getElementById("sendBtn");
+        const typingEl = document.getElementById("typing");
+        const onlineCount = document.getElementById("online-count");
+        const connStatus = document.getElementById("connStatus");
+
+        let typingTimer;
+        const onlineUsers = new Set();
+
+        // اتصال WebSocket
         function connectWebSocket() {
+            if (reconnectAttempts >= maxReconnect) {
+                showStatus("اتصال ناموفق. صفحه را رفرش کنید.", "error");
+                return;
+            }
+
             ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${username}`);
 
             ws.onopen = () => {
+                reconnectAttempts = 0;
+                showStatus("متصل شد", "success");
+                setTimeout(() => connStatus.style.display = 'none', 1000);
+
                 keepAliveInterval = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'ping' }));
@@ -230,21 +268,25 @@
                 updateOnlineCount();
             };
 
+            ws.onerror = () => {
+                showStatus("خطا در اتصال", "error");
+            };
+
             ws.onclose = () => {
                 clearInterval(keepAliveInterval);
-                setTimeout(connectWebSocket, 1000);
+                showStatus("اتصال قطع شد. در حال اتصال مجدد...", "warning");
+                reconnectAttempts++;
+                setTimeout(connectWebSocket, 2000 * reconnectAttempts);
             };
         }
 
-        connectWebSocket();
+        function showStatus(msg, type) {
+            connStatus.textContent = msg;
+            connStatus.style.display = 'block';
+            connStatus.style.background = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#f59e0b';
+        }
 
-        const messages = document.getElementById("messages");
-        const input = document.getElementById("messageInput");
-        const sendBtn = document.getElementById("sendBtn");
-        const typingEl = document.getElementById("typing");
-        const onlineCount = document.getElementById("online-count");
-        let typingTimer;
-        const onlineUsers = new Set();
+        connectWebSocket();
 
         // پس‌زمینه
         const canvas = document.getElementById('quantum-bg');
@@ -284,13 +326,14 @@
             canvas.height = window.innerHeight;
         });
 
+        // توابع
         function addMessage(sender, text, isMine) {
             const msg = document.createElement("div");
             msg.className = `message ${isMine ? 'mine' : 'other'}`;
             const time = new Date().toLocaleTimeString('fa-IR', {hour: '2-digit', minute: '2-digit'});
             msg.innerHTML = `
                 <div class="message-bubble">
-                    ${!isMine ? `<div class="message-sender">${sender}</div>` : ''}
+                    ${!isMine ? `<div class="message-sender">${sender}<//miv>` : ''}
                     <div class="message-text">${escapeHtml(text)}</div>
                     <div class="message-time">${time}</div>
                 </div>
@@ -323,28 +366,42 @@
 
         function sendMessage() {
             const text = input.value.trim();
-            if (!text || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(text);
-            addMessage(username, text, true);
-            input.value = "";
-            sendBtn.disabled = true;
-            clearTimeout(typingTimer);
-            typingEl.style.display = 'none';
+            if (!text || !ws || ws.readyState !== WebSocket.OPEN) {
+                console.warn("WebSocket is not open:", ws?.readyState);
+                return;
+            }
+            try {
+                ws.send(text);
+                addMessage(username, text, true);
+                input.value = "";
+                sendBtn.disabled = true;
+                clearTimeout(typingTimer);
+                typingEl.style.display = 'none';
+            } catch (err) {
+                showStatus("خطا در ارسال پیام", "error");
+                console.error(err);
+            }
         }
 
         function sendTyping() {
-            if (ws.readyState === WebSocket.OPEN && input.value.trim()) {
+            if (ws?.readyState === WebSocket.OPEN && input.value.trim()) {
                 clearTimeout(typingTimer);
                 ws.send(JSON.stringify({ type: 'typing' }));
             }
         }
 
         function toggleSendButton() {
-            sendBtn.disabled = !input.value.trim();
+            const hasText = input.value.trim().length > 0;
+            const isConnected = ws?.readyState === WebSocket.OPEN;
+            sendBtn.disabled = !hasText || !isConnected;
         }
 
+        // رویدادها
         sendBtn.addEventListener("click", sendMessage);
-        input.addEventListener("input", () => { toggleSendButton(); sendTyping(); });
+        input.addEventListener("input", () => {
+            toggleSendButton();
+            sendTyping();
+        });
         input.addEventListener("keydown", e => {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -352,6 +409,8 @@
             }
         });
 
+        // بررسی اولیه
+        setInterval(toggleSendButton, 500);
         toggleSendButton();
     </script>
 </body>
