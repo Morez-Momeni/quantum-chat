@@ -182,195 +182,204 @@
     <div class="connection-status" id="connStatus">در حال اتصال...</div>
 
     <script>
-        // فیلتر و اعتبارسنجی username
-        const username = localStorage.getItem("username");
-        const cleanUsername = username?.replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '').trim();
+    // دریافت و فیلتر username از localStorage
+    const rawUsername = localStorage.getItem("username");
+    const cleanUsername = rawUsername?.replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '').trim();
 
-        if (!cleanUsername || cleanUsername.length < 1) {
-            alert("نام کاربری نامعتبر است! دوباره وارد شوید.");
-            localStorage.removeItem("username");
-            window.location.href = "/";
-            throw new Error("Invalid username");
+    // چک سخت: اگر نامعتبر بود، پاک کن و برگرد به خانه
+    if (!cleanUsername || cleanUsername.length < 1) {
+        alert("نام کاربری نامعتبر است! لطفاً دوباره وارد شوید.");
+        localStorage.removeItem("username");
+        window.location.href = "/";
+        throw new Error("Invalid or missing username");
+    }
+
+    // نمایش نام کاربر
+    document.querySelector(".header-title p").textContent = `خوش آمدی، ${cleanUsername}`;
+
+    let ws;
+    let keepAliveInterval;
+    let reconnectAttempts = 0;
+    const maxReconnect = 10;
+
+    const messages = document.getElementById("messages");
+    const input = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const typingEl = document.getElementById("typing");
+    const onlineCount = document.getElementById("online-count");
+    const connStatus = document.getElementById("connStatus");
+
+    let typingTimer;
+    const onlineUsers = new Set();
+
+    function showStatus(msg, type = "info") {
+        connStatus.textContent = msg;
+        connStatus.style.display = "block";
+        connStatus.style.background = 
+            type === "success" ? "#10b981" : 
+            type === "error" ? "#ef4444" : 
+            type === "warning" ? "#f59e0b" : "#3b82f6";
+        setTimeout(() => {
+            if (connStatus.textContent === msg) connStatus.style.display = "none";
+        }, 3000);
+    }
+
+    function connectWebSocket() {
+        if (reconnectAttempts >= maxReconnect) {
+            showStatus("اتصال ناموفق. صفحه را رفرش کنید.", "error");
+            return;
         }
 
-        document.querySelector(".header-title p").textContent = `خوش آمدی، ${cleanUsername}`;
+        showStatus("در حال اتصال...", "warning");
 
-        let ws;
-        let keepAliveInterval;
-        let reconnectAttempts = 0;
-        const maxReconnect = 10;
-
-        const messages = document.getElementById("messages");
-        const input = document.getElementById("messageInput");
-        const sendBtn = document.getElementById("sendBtn");
-        const typingEl = document.getElementById("typing");
-        const onlineCount = document.getElementById("online-count");
-        const connStatus = document.getElementById("connStatus");
-
-        let typingTimer;
-        const onlineUsers = new Set();
-
-        function showStatus(msg, type = "info") {
-            connStatus.textContent = msg;
-            connStatus.style.display = "block";
-            connStatus.style.background = type === "success" ? "#10b981" : type === "error" ? "#ef4444" : type === "warning" ? "#f59e0b" : "#3b82f6";
-            setTimeout(() => { if (connStatus.textContent === msg) connStatus.style.display = "none"; }, 3000);
-        }
-
-        function connectWebSocket() {
-            if (reconnectAttempts >= maxReconnect) {
-                showStatus("اتصال ناموفق", "error");
-                return;
-            }
-            showStatus("در حال اتصال...", "warning");
-
+        try {
             ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${encodeURIComponent(cleanUsername)}`);
+        } catch (err) {
+            showStatus("خطا در ساخت WebSocket", "error");
+            console.error("WebSocket URL error:", err);
+            return;
+        }
 
-            ws.onopen = () => {
-                reconnectAttempts = 0;
-                showStatus("متصل شدی!", "success");
-                keepAliveInterval = setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
-                }, 30000);
-            };
+        ws.onopen = () => {
+            reconnectAttempts = 0;
+            showStatus("متصل شدی!", "success");
 
-            ws.onmessage = (event) => {
-                let data;
-                try { data = JSON.parse(event.data); } catch { return; }
-                if (data.type === "pong") return;
-
-                if (data.type === "message") addMessage(data.sender, data.text, data.sender === cleanUsername);
-                else if (data.type === "join") { onlineUsers.add(data.username); if (data.username !== cleanUsername) addSystemMessage(`${data.username} وارد چت شد`); }
-                else if (data.type === "leave") { onlineUsers.delete(data.username); addSystemMessage(`${data.username} چت را ترک کرد`); }
-                else if (data.type === "typing") {
-                    if (data.username !== cleanUsername) {
-                        typingEl.style.display = 'flex';
-                        clearTimeout(typingTimer);
-                        typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
-                    }
+            keepAliveInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'ping' }));
                 }
-                updateOnlineCount();
-            };
+            }, 30000);
+        };
 
-            ws.onerror = () => showStatus("خطا در اتصال", "error");
-            ws.onclose = () => {
-                clearInterval(keepAliveInterval);
-                showStatus("اتصال قطع شد. تلاش مجدد...", "warning");
-                reconnectAttempts++;
-                setTimeout(connectWebSocket, 2000 * reconnectAttempts);
-            };
-        }
+        ws.onmessage = (event) => {
+            let data;
+            try { data = JSON.parse(event.data); } catch { return; }
 
-        connectWebSocket();
+            if (data.type === "pong") return;
 
-        const canvas = document.getElementById('quantum-bg');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        const particles = [];
-        const colors = ['#00d4ff', '#ff2e63', '#7c3aed', '#10b981'];
-        for (let i = 0; i < 80; i++) {
-            particles.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                radius: Math.random() * 2.5 + 1,
-                speed: Math.random() * 0.7 + 0.3,
-                angle: Math.random() * Math.PI * 2,
-                color: colors[i % 4]
-            });
-        }
-        function animate() {
-            ctx.fillStyle = 'rgba(10, 10, 30, 0.03)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(p => {
-                p.x += Math.cos(p.angle) * p.speed;
-                p.y += Math.sin(p.angle) * p.speed;
-                if (p.x < 0 || p.x > canvas.width) p.angle = Math.PI - p.angle;
-                if (p.y < 0 || p.y > canvas.height) p.angle = -p.angle;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.fillStyle = p.color + '80';
-                ctx.fill();
-            });
-            requestAnimationFrame(animate);
-        }
-        animate();
-        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
-
-        function addMessage(sender, text, isMine) {
-            const msg = document.createElement("div");
-            msg.className = `message ${isMine ? 'mine' : 'other'}`;
-            const time = new Date().toLocaleTimeString('fa-IR', {hour: '2-digit', minute: '2-digit'});
-            msg.innerHTML = `
-                <div class="message-bubble">
-                    ${!isMine ? `<div class="message-sender">${sender}</div>` : ''}
-                    <div class="message-text">${escapeHtml(text)}</div>
-                    <div class="message-time">${time}</div>
-                </div>
-            `;
-            messages.appendChild(msg);
-            messages.scrollTop = messages.scrollHeight;
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function addSystemMessage(text) {
-            const msg = document.createElement("div");
-            msg.style.textAlign = 'center';
-            msg.style.margin = '1rem 0';
-            msg.style.fontSize = '0.8rem';
-            msg.style.color = '#94a3b8';
-            msg.style.opacity = '0.7';
-            msg.textContent = text;
-            messages.appendChild(msg);
-            messages.scrollTop = messages.scrollHeight;
-        }
-
-        function updateOnlineCount() { onlineCount.textContent = `${onlineUsers.size} آنلاین`; }
-
-        function sendMessage() {
-            const text = input.value.trim();
-            if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-            try {
-                ws.send(text);
-                addMessage(cleanUsername, text, true);
-                input.value = "";
-                sendBtn.disabled = true;
-                clearTimeout(typingTimer);
-                typingEl.style.display = 'none';
-            } catch (err) {
-                showStatus("خطا در ارسال", "error");
+            if (data.type === "message") {
+                addMessage(data.sender, data.text, data.sender === cleanUsername);
             }
-        }
-
-        function sendTyping() {
-            if (ws?.readyState === WebSocket.OPEN && input.value.trim()) {
-                clearTimeout(typingTimer);
-                ws.send(JSON.stringify({ type: 'typing' }));
+            else if (data.type === "join") {
+                onlineUsers.add(data.username);
+                if (data.username !== cleanUsername) addSystemMessage(`${data.username} وارد چت شد`);
             }
-        }
-
-        function toggleSendButton() {
-            const hasText = input.value.trim().length > 0;
-            const isConnected = ws?.readyState === WebSocket.OPEN;
-            sendBtn.disabled = !hasText || !isConnected;
-        }
-
-        sendBtn.addEventListener("click", sendMessage);
-        input.addEventListener("input", () => { toggleSendButton(); sendTyping(); });
-        input.addEventListener("keydown", e => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+            else if (data.type === "leave") {
+                onlineUsers.delete(data.username);
+                addSystemMessage(`${data.username} چت را ترک کرد`);
             }
-        });
+            else if (data.type === "typing") {
+                if (data.username !== cleanUsername) {
+                    typingEl.style.display = 'flex';
+                    clearTimeout(typingTimer);
+                    typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+                }
+            }
+            updateOnlineCount();
+        };
 
-        setInterval(toggleSendButton, 500);
+        ws.onerror = (err) => {
+            showStatus("خطا در اتصال", "error");
+            console.error("WebSocket error:", err);
+        };
+
+        ws.onclose = () => {
+            clearInterval(keepAliveInterval);
+            showStatus("اتصال قطع شد. تلاش مجدد...", "warning");
+            reconnectAttempts++;
+            setTimeout(connectWebSocket, 2000 * reconnectAttempts);
+        };
+    }
+
+    connectWebSocket();
+
+    // --- بقیه توابع ---
+    function addMessage(sender, text, isMine) {
+        const msg = document.createElement("div");
+        msg.className = `message ${isMine ? 'mine' : 'other'}`;
+        const time = new Date().toLocaleTimeString('fa-IR', {hour: '2-digit', minute: '2-digit'});
+        msg.innerHTML = `
+            <div class="message-bubble">
+                ${!isMine ? `<div class="message-sender">${escapeHtml(sender)}</div>` : ''}
+                <div class="message-text">${escapeHtml(text)}</div>
+                <div class="message-time">${time}</div>
+            </div>
+        `;
+        messages.appendChild(msg);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function addSystemMessage(text) {
+        const msg = document.createElement("div");
+        msg.style.textAlign = 'center';
+        msg.style.margin = '1rem 0';
+        msg.style.fontSize = '0.8rem';
+        msg.style.color = '#94a3b8';
+        msg.style.opacity = '0.7';
+        msg.textContent = text;
+        messages.appendChild(msg);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function updateOnlineCount() {
+        onlineCount.textContent = `${onlineUsers.size} آنلاین`;
+    }
+
+    function sendMessage() {
+        const text = input.value.trim();
+        if (!text || !ws || ws.readyState !== WebSocket.OPEN) {
+            showStatus("اتصال برقرار نیست!", "error");
+            return;
+        }
+        try {
+            ws.send(text);
+            addMessage(cleanUsername, text, true);
+            input.value = "";
+            sendBtn.disabled = true;
+            clearTimeout(typingTimer);
+            typingEl.style.display = 'none';
+        } catch (err) {
+            showStatus("خطا در ارسال", "error");
+            console.error(err);
+        }
+    }
+
+    function sendTyping() {
+        if (ws?.readyState === WebSocket.OPEN && input.value.trim()) {
+            clearTimeout(typingTimer);
+            ws.send(JSON.stringify({ type: 'typing' }));
+        }
+    }
+
+    function toggleSendButton() {
+        const hasText = input.value.trim().length > 0;
+        const isConnected = ws?.readyState === WebSocket.OPEN;
+        sendBtn.disabled = !hasText || !isConnected;
+    }
+
+    // رویدادها
+    sendBtn.addEventListener("click", sendMessage);
+    input.addEventListener("input", () => {
         toggleSendButton();
-    </script>
+        sendTyping();
+    });
+    input.addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // چک مداوم
+    setInterval(toggleSendButton, 500);
+    toggleSendButton();
+</script>
 </body>
 </html>
+
