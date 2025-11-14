@@ -30,55 +30,58 @@
         </form>
     </div>
 
-    <script>
-        const form = document.getElementById("loginForm");
-        const passwordInput = document.getElementById("password");
-        const loginBtn = document.getElementById("loginBtn");
-        const error = document.getElementById("error");
+<script>
+    const form = document.getElementById("loginForm");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const error = document.getElementById("error");
 
-        // دریافت و فیلتر کردن username
-        let rawUsername = "{{ username }}".trim();
-        const cleanUsername = rawUsername.replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '').trim();
+    let rawUsername = "{{ username }}".trim();
+    const cleanUsername = rawUsername
+        .replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-        if (!cleanUsername || cleanUsername.length < 1) {
-            alert("نام کاربری معتبر نیست!");
-            window.location.href = "/";
-        }
+    if (!cleanUsername) {
+        alert("نام کاربری نامعتبر!");
+        window.location.href = "/";
+    }
 
-        form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const password = passwordInput.value.trim();
-            if (!password) return;
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const password = passwordInput.value.trim();
+        if (!password) return;
 
-            loginBtn.disabled = true;
-            loginBtn.textContent = "در حال ورود...";
-            error.textContent = "";
+        loginBtn.disabled = true;
+        loginBtn.textContent = "در حال ورود...";
+        error.textContent = "";
 
-            try {
-                const res = await fetch(`/login/${encodeURIComponent(cleanUsername)}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: `password=${encodeURIComponent(password)}`
-                });
+        try {
+            const res = await fetch(`/login/${encodeURIComponent(cleanUsername)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `password=${encodeURIComponent(password)}`
+            });
 
-                const data = await res.json();
+            const data = await res.json();
 
-                if (data.success) {
-                    localStorage.setItem("username", cleanUsername);
-                    window.location.href = "/chat";
-                } else {
-                    error.textContent = data.error || "رمز اشتباه است!";
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = "ورود به چت";
-                }
-            } catch (err) {
-                error.textContent = "خطا در اتصال";
+            if (data.success) {
+                localStorage.setItem("username", cleanUsername); // ذخیره تمیز
+                window.location.href = "/chat";
+            } else {
+                error.textContent = data.error || "رمز اشتباه است!";
                 loginBtn.disabled = false;
                 loginBtn.textContent = "ورود به چت";
             }
-        });
+        } catch (err) {
+            error.textContent = "خطا در اتصال";
+            loginBtn.disabled = false;
+            loginBtn.textContent = "ورود به چت";
+        }
+    });
 
-        passwordInput.focus();
-    </script>
+    passwordInput.focus();
+</script>
 </body>
 </html>
+
