@@ -29,9 +29,8 @@ class ConnectionManager:
                 continue
             try:
                 await conn.send_text(message)
-            except Exception:  # شامل WebSocketDisconnect
+            except Exception:
                 dead_usernames.append(username)
-
         for username in dead_usernames:
             self.disconnect(username)
 
@@ -60,24 +59,21 @@ async def chat_page(request: Request):
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(username, websocket)
-
-    await manager.broadcast(json.dumps({
-        "type": "join",
-        "username": username
-    }), exclude=username)
+    await manager.broadcast(json.dumps({"type": "join", "username": username}), exclude=username)
 
     try:
         while True:
             data = await websocket.receive_text()
 
+            if data.strip() == '{"type":"ping"}':
+                await websocket.send_text('{"type":"pong"}')
+                continue
+
             if data.strip().startswith('{"type":"typing"'):
                 try:
                     msg = json.loads(data)
                     if msg.get("type") == "typing":
-                        await manager.broadcast(json.dumps({
-                            "type": "typing",
-                            "username": username
-                        }), exclude=username)
+                        await manager.broadcast(json.dumps({"type": "typing", "username": username}), exclude=username)
                         continue
                 except:
                     pass
@@ -90,7 +86,4 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
 
     except WebSocketDisconnect:
         manager.disconnect(username)
-        await manager.broadcast(json.dumps({
-            "type": "leave",
-            "username": username
-        }), exclude=username)
+        await manager.broadcast(json.dumps({"type": "leave", "username": username}), exclude=username)
