@@ -12,15 +12,15 @@
     <div class="chat-app">
         <div class="chat-header">
             <div class="header-left">
-                <div class="logo">QC</div>
+                <div class="logo">3M</div>
                 <div class="header-title">
-                    <h2>کوانتوم چت</h2>
-                    <p>چت زنده • بدون باگ</p>
+                    <h2>Three Musketeers + 1</h2>
+                    <p>چت زنده</p>
                 </div>
             </div>
             <div class="header-right">
                 <div class="status-indicator"></div>
-                <span id="online-count">0 آنلاین</span>
+                
             </div>
         </div>
 
@@ -55,7 +55,6 @@
         let typingTimer;
         const onlineUsers = new Set();
 
-        // پس‌زمینه
         const canvas = document.getElementById('quantum-bg');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
@@ -150,7 +149,7 @@
 
         // WebSocket
         ws.onopen = () => {
-            // هیچ چیز نفرست — سرور خودش join رو می‌فرسته
+           
         };
 
         ws.onmessage = (event) => {
@@ -205,3 +204,4 @@
 </body>
 
 </html>
+
