@@ -263,31 +263,32 @@
                 }, 30000);
             };
 
-            ws.onmessage = (event) => {
-                let data;
-                try { data = JSON.parse(event.data); } catch { return; }
-                if (data.type === "pong") return;
+           ws.onmessage = (event) => {
+    let data;
+    try { data = JSON.parse(event.data); } catch { return; }
 
-                if (data.type === "message") {
-                    addMessage(data.sender, data.text, data.sender === cleanUsername);
-                }
-                else if (data.type === "join") {
-                    onlineUsers.add(data.username);
-                    if (data.username !== cleanUsername) addSystemMessage(`${data.username} وارد چت شد`);
-                }
-                else if (data.type === "leave") {
-                    onlineUsers.delete(data.username);
-                    addSystemMessage(`${data.username} چت را ترک کرد`);
-                }
-                else if (data.type === "typing") {
-                    if (data.username !== cleanUsername) {
-                        typingEl.style.display = 'flex';
-                        clearTimeout(typingTimer);
-                        typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
-                    }
-                }
-                updateOnlineCount();
-            };
+    if (data.type === "pong") return;
+
+    if (data.type === "message") {
+        addMessage(data.sender, data.text, data.sender === cleanUsername);
+    }
+    else if (data.type === "join") {
+        onlineUsers.add(data.username);
+        if (data.username !== cleanUsername) addSystemMessage(`${data.username} وارد چت شد`);
+    }
+    else if (data.type === "leave") {
+        onlineUsers.delete(data.username);
+        addSystemMessage(`${data.username} چت را ترک کرد`);
+    }
+    else if (data.type === "typing") {
+        if (data.username !== cleanUsername) {
+            typingEl.style.display = 'flex';
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+        }
+    }
+    updateOnlineCount();
+};
 
             ws.onerror = (err) => {
                 showStatus("خطا در اتصال WebSocket", "error");
@@ -348,23 +349,23 @@
     }
 
     function sendMessage() {
-        const text = input.value.trim();
-        if (!text || !ws || ws.readyState !== WebSocket.OPEN) {
-            showStatus("اتصال برقرار نیست!", "error");
-            return;
-        }
-        try {
-            ws.send(text);
-            addMessage(cleanUsername, text, true);
-            input.value = "";
-            sendBtn.disabled = true;
-            clearTimeout(typingTimer);
-            typingEl.style.display = 'none';
-        } catch (err) {
-            showStatus("خطا در ارسال", "error");
-            console.error(err);
-        }
+    const text = input.value.trim();
+    if (!text || !ws || ws.readyState !== WebSocket.OPEN) {
+        showStatus("اتصال برقرار نیست!", "error");
+        return;
     }
+    try {
+        ws.send(text);
+        input.value = "";
+        sendBtn.disabled = true;
+        clearTimeout(typingTimer);
+        typingEl.style.display = 'none';
+        // پیام رو اینجا اضافه نکن! سرور برمی‌گردونه
+    } catch (err) {
+        showStatus("خطا در ارسال", "error");
+        console.error(err);
+    }
+}
 
     function sendTyping() {
         if (ws?.readyState === WebSocket.OPEN && input.value.trim()) {
@@ -396,5 +397,6 @@
 </script>
 </body>
 </html>
+
 
 
