@@ -141,7 +141,7 @@
         @keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
         @media (max-width: 480px) { .message { max-width: 92%; } }
-        @media (min-width: 768px) { .chat-app { max-width: 800px; margin: 0 auto; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); } }
+        @media (min-width: 768px) { .chat-app { max-width: 800px; margin: 0 auto; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, froh 0, 0.5); } }
     </style>
 </head>
 <body>
@@ -182,14 +182,18 @@
     <div class="connection-status" id="connStatus">در حال اتصال...</div>
 
     <script>
+        // فیلتر و اعتبارسنجی username
         const username = localStorage.getItem("username");
-        if (!username) {
-            alert("لطفاً ابتدا وارد حساب خود شوید!");
+        const cleanUsername = username?.replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '').trim();
+
+        if (!cleanUsername || cleanUsername.length < 1) {
+            alert("نام کاربری نامعتبر است! دوباره وارد شوید.");
+            localStorage.removeItem("username");
             window.location.href = "/";
-            throw new Error("No username");
+            throw new Error("Invalid username");
         }
 
-        document.querySelector(".header-title p").textContent = `خوش آمدی، ${username}`;
+        document.querySelector(".header-title p").textContent = `خوش آمدی، ${cleanUsername}`;
 
         let ws;
         let keepAliveInterval;
@@ -220,7 +224,7 @@
             }
             showStatus("در حال اتصال...", "warning");
 
-            ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${encodeURIComponent(username)}`);
+            ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${encodeURIComponent(cleanUsername)}`);
 
             ws.onopen = () => {
                 reconnectAttempts = 0;
@@ -235,11 +239,11 @@
                 try { data = JSON.parse(event.data); } catch { return; }
                 if (data.type === "pong") return;
 
-                if (data.type === "message") addMessage(data.sender, data.text, data.sender === username);
-                else if (data.type === "join") { onlineUsers.add(data.username); if (data.username !== username) addSystemMessage(`${data.username} وارد چت شد`); }
+                if (data.type === "message") addMessage(data.sender, data.text, data.sender === cleanUsername);
+                else if (data.type === "join") { onlineUsers.add(data.username); if (data.username !== cleanUsername) addSystemMessage(`${data.username} وارد چت شد`); }
                 else if (data.type === "leave") { onlineUsers.delete(data.username); addSystemMessage(`${data.username} چت را ترک کرد`); }
                 else if (data.type === "typing") {
-                    if (data.username !== username) {
+                    if (data.username !== cleanUsername) {
                         typingEl.style.display = 'flex';
                         clearTimeout(typingTimer);
                         typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
@@ -333,7 +337,7 @@
             if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
             try {
                 ws.send(text);
-                addMessage(username, text, true);
+                addMessage(cleanUsername, text, true);
                 input.value = "";
                 sendBtn.disabled = true;
                 clearTimeout(typingTimer);
