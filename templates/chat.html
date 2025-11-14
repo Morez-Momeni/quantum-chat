@@ -203,7 +203,11 @@
 
     <script>
         const username = localStorage.getItem("username");
-        if (!username) window.location.href = "/";
+        if (!username) {
+        alert("لطفاً ابتدا وارد حساب کاربری خود شوید.");
+        window.location.href = "/";
+        throw new Error("No username in localStorage"); // متوقف کردن اسکریپت
+        }
 
         let ws;
         let keepAliveInterval;
@@ -415,3 +419,4 @@
     </script>
 </body>
 </html>
+
