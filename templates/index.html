@@ -19,7 +19,11 @@
             --text-muted: #94a3b8;
             --border: rgba(255, 255, 255, 0.08);
             --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            --radius: 20px;
+            --radius: 18px;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
@@ -32,17 +36,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 1rem;
         }
 
         .container {
             text-align: center;
             z-index: 10;
-            max-width: 900px;
-            padding: 2rem;
+            width: 100%;
+            max-width: 1000px;
+            padding: clamp(1rem, 5vw, 2rem);
         }
 
         .title-3d {
-            font-size: 3.5rem;
+            font-size: clamp(2rem, 8vw, 3.5rem);
             font-weight: 700;
             background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
             -webkit-background-clip: text;
@@ -51,13 +57,13 @@
             background-size: 300%;
             animation: gradient 6s ease infinite;
             margin-bottom: 0.5rem;
-            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            text-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
         }
 
         .subtitle-glow {
-            font-size: 1.2rem;
+            font-size: clamp(1rem, 4vw, 1.2rem);
             color: var(--text-muted);
-            margin-bottom: 3rem;
+            margin-bottom: clamp(2rem, 6vw, 3rem);
             opacity: 0.9;
             letter-spacing: 0.5px;
         }
@@ -65,18 +71,35 @@
         .friends-orbit {
             display: flex;
             flex-wrap: wrap;
-            gap: 2rem;
+            gap: clamp(1rem, 4vw, 2rem);
             justify-content: center;
             perspective: 1000px;
+            padding: 0 clamp(0.5rem, 2vw, 1rem);
         }
 
         .friend-card-3d {
-            width: 180px;
-            height: 220px;
+            flex: 0 1 calc(50% - clamp(0.5rem, 2vw, 1rem));
+            max-width: 180px;
+            min-width: 140px;
+            height: auto;
+            aspect-ratio: 0.8;
             cursor: pointer;
             animation: floatIn 0.8s ease-out forwards;
             opacity: 0;
-            transform: translateY(50px) scale(0.8);
+            transform: translateY(30px) scale(0.9);
+        }
+
+        @media (min-width: 640px) {
+            .friend-card-3d {
+                flex: 0 1 calc(33.333% - clamp(0.5rem, 2vw, 1rem));
+            }
+        }
+
+        @media (min-width: 768px) {
+            .friend-card-3d {
+                flex: 0 1 calc(25% - clamp(0.5rem, 2vw, 1rem));
+                max-width: 180px;
+            }
         }
 
         .friend-card-3d:nth-child(1) { animation-delay: 0.1s; }
@@ -94,12 +117,12 @@
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 1.5rem;
+            padding: clamp(1rem, 4vw, 1.5rem);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 1rem;
+            gap: 0.8rem;
             box-shadow: var(--shadow);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
@@ -120,29 +143,31 @@
             z-index: -1;
         }
 
-        .card-inner:hover::before {
+        .card-inner:hover::before,
+        .card-inner:focus::before {
             opacity: 0.15;
         }
 
-        .card-inner:hover {
-            transform: translateY(-12px) scale(1.05);
-            box-shadow: 0 20px 50px rgba(0, 212, 255, 0.3);
+        .card-inner:hover,
+        .card-inner:focus {
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 0 20px 40px rgba(0, 212, 255, 0.3);
             border-color: var(--primary);
         }
 
         .card-inner:active {
-            transform: translateY(-8px) scale(1.03);
+            transform: translateY(-6px) scale(1.03);
         }
 
         .avatar {
-            width: 80px;
-            height: 80px;
+            width: clamp(60px, 15vw, 80px);
+            height: clamp(60px, 15vw, 80px);
             background: linear-gradient(135deg, var(--primary), var(--accent));
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: clamp(1.5rem, 6vw, 2rem);
             font-weight: 700;
             color: white;
             box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
@@ -160,13 +185,16 @@
         }
 
         .name {
-            font-size: 1.3rem;
+            font-size: clamp(1rem, 4vw, 1.3rem);
             font-weight: 600;
             background: linear-gradient(90deg, var(--primary), white);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
             letter-spacing: 0.5px;
+            word-break: break-word;
+            max-width: 100%;
+            padding: 0 0.5rem;
         }
 
         .glow {
@@ -180,7 +208,8 @@
             pointer-events: none;
         }
 
-        .card-inner:hover .glow {
+        .card-inner:hover .glow,
+        .card-inner:focus .glow {
             opacity: 0.2;
             animation: pulse 2s ease-in-out infinite;
         }
@@ -213,6 +242,11 @@
             z-index: 1;
             pointer-events: none;
         }
+
+        /* جلوگیری از اسکرول افقی */
+        html, body {
+            overflow-x: hidden;
+        }
     </style>
 </head>
 <body>
@@ -224,7 +258,7 @@
 
         <div class="friends-orbit">
             {% for friend in friends %}
-            <div class="friend-card-3d" onclick="goToLogin('{{ friend }}')">
+            <div class="friend-card-3d" onclick="goToLogin('{{ friend }}')" tabindex="0" role="button">
                 <div class="card-inner">
                     <div class="avatar">
                         {{ friend[0] }}
@@ -239,14 +273,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.0/dist/vanilla-tilt.min.js"></script>
     <script>
-        // پس‌زمینه کوانتومی
+        // پس‌زمینه
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         const particles = [];
         const colors = ['#00d4ff', '#ff2e63', '#7c3aed', '#10b981'];
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 80; i++) {
             particles.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
@@ -278,23 +312,33 @@
             canvas.height = window.innerHeight;
         });
 
-        // Tilt انیمیشن
+        // Tilt
         VanillaTilt.init(document.querySelectorAll(".friend-card-3d"), {
-            max: 20,
+            max: 15,
             speed: 400,
             glare: true,
-            "max-glare": 0.4,
-            gyroscope: true
+            "max-glare": 0.3,
+            scale: 1.05
         });
 
+        // کلیک و کیبورد
         function goToLogin(username) {
-            // افکت کلیک
             const card = event.currentTarget;
             card.style.transform = 'scale(0.95)';
             setTimeout(() => {
                 window.location.href = `/login/${encodeURIComponent(username)}`;
             }, 150);
         }
+
+        // پشتیبانی از Enter و Space
+        document.querySelectorAll('.friend-card-3d').forEach(card => {
+            card.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    goToLogin(card.querySelector('.name').textContent);
+                }
+            });
+        });
     </script>
 </body>
 </html>
