@@ -37,9 +37,8 @@
         const error = document.getElementById("error");
         const username = "{{ username }}".trim();
 
-        // اگر username خالی بود، برگرد به خانه
         if (!username) {
-            alert("نام کاربری معتبر نیست!");
+            alert("نام کاربری نامعتبر!");
             window.location.href = "/";
         }
 
@@ -62,9 +61,7 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    // ذخیره username در localStorage
                     localStorage.setItem("username", username);
-                    // برو به چت
                     window.location.href = "/chat";
                 } else {
                     error.textContent = data.error || "رمز اشتباه است!";
@@ -72,14 +69,12 @@
                     loginBtn.textContent = "ورود به چت";
                 }
             } catch (err) {
-                error.textContent = "خطا در اتصال به سرور";
+                error.textContent = "خطا در اتصال";
                 loginBtn.disabled = false;
                 loginBtn.textContent = "ورود به چت";
-                console.error(err);
             }
         });
 
-        // فوکوس خودکار روی رمز
         passwordInput.focus();
     </script>
 </body>
