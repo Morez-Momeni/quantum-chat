@@ -1,4 +1,4 @@
-# main.py
+
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -55,7 +55,6 @@ async def chat_page(request: Request):
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(username, websocket)
 
-    # فقط به دیگران بگو که وارد شد
     await manager.broadcast(json.dumps({
         "type": "join",
         "username": username
@@ -65,7 +64,6 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         while True:
             data = await websocket.receive_text()
 
-            # تایپینگ فقط به دیگران
             if data.strip().startswith('{"type":"typing"'):
                 try:
                     msg = json.loads(data)
@@ -78,7 +76,6 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 except:
                     pass
 
-            # پیام فقط یک بار و به همه (شامل خودش)
             await manager.broadcast(json.dumps({
                 "type": "message",
                 "sender": username,
@@ -147,7 +144,6 @@ async def chat_page(request: Request):
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(username, websocket)
 
-    # فقط به دیگران بگو که وارد شد
     await manager.broadcast(json.dumps({
         "type": "join",
         "username": username
@@ -157,7 +153,6 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         while True:
             data = await websocket.receive_text()
 
-            # تایپینگ فقط به دیگران
             if data.strip().startswith('{"type":"typing"'):
                 try:
                     msg = json.loads(data)
@@ -170,7 +165,6 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 except:
                     pass
 
-            # پیام فقط یک بار و به همه (شامل خودش)
             await manager.broadcast(json.dumps({
                 "type": "message",
                 "sender": username,
@@ -182,4 +176,5 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         await manager.broadcast(json.dumps({
             "type": "leave",
             "username": username
+
         }), exclude=username)
