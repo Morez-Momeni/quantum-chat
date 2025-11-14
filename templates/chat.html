@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Three Musketeers + 1 Chat</title>
-    <link rel="stylesheet" href="/static/chat.css" />
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -21,11 +20,7 @@
             --input-height: clamp(44px, 12vw, 56px);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Vazirmatn', sans-serif;
@@ -38,12 +33,7 @@
             flex-direction: column;
         }
 
-        canvas {
-            position: fixed;
-            top: 0; left: 0;
-            z-index: 1;
-            pointer-events: none;
-        }
+        canvas { position: fixed; top: 0; left: 0; z-index: 1; pointer-events: none; }
 
         .chat-app {
             display: flex;
@@ -51,10 +41,8 @@
             height: 100vh;
             max-width: 100vw;
             z-index: 10;
-            background: transparent;
         }
 
-        /* === هدر === */
         .chat-header {
             display: flex;
             justify-content: space-between;
@@ -64,63 +52,17 @@
             backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border);
             flex-shrink: 0;
-            z-index: 20;
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: clamp(0.6rem, 2vw, 1rem);
-        }
+        .header-left { display: flex; align-items: center; gap: clamp(0.6rem, 2vw, 1rem); }
+        .logo { width: clamp(36px, 10vw, 48px); height: clamp(36px, 10vw, 48px); background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: clamp(0.9rem, 3vw, 1.2rem); color: white; box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4); }
+        .header-title h2 { font-size: clamp(1.1rem, 4vw, 1.4rem); font-weight: 600; margin: 0; }
+        .header-title p { font-size: clamp(0.75rem, 2.5vw, 0.9rem); color: var(--text-muted); margin: 0; opacity: 0.8; }
 
-        .logo {
-            width: clamp(36px, 10vw, 48px);
-            height: clamp(36px, 10vw, 48px);
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: clamp(0.9rem, 3vw, 1.2rem);
-            color: white;
-            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
-        }
+        .header-right { display: flex; align-items: center; gap: 0.5rem; }
+        .status-indicator { width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
+        #online-count { font-size: clamp(0.8rem, 2.5vw, 0.95rem); color: var(--text-muted); }
 
-        .header-title h2 {
-            font-size: clamp(1.1rem, 4vw, 1.4rem);
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .header-title p {
-            font-size: clamp(0.75rem, 2.5vw, 0.9rem);
-            color: var(--text-muted);
-            margin: 0;
-            opacity: 0.8;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            background: #10b981;
-            border-radius: 50%;
-            box-shadow: 0 0 10px #10b981;
-            animation: pulse 2s infinite;
-        }
-
-        #online-count {
-            font-size: clamp(0.8rem, 2.5vw, 0.95rem);
-            color: var(--text-muted);
-        }
-
-        /* === پیام‌ها === */
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -129,30 +71,10 @@
             flex-direction: column;
             gap: 0.8rem;
             scrollbar-width: thin;
-            scrollbar-color: var(--primary) transparent;
         }
 
-        .messages-container::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .messages-container::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .messages-container::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 3px;
-        }
-
-        .message {
-            max-width: 85%;
-            align-self: flex-start;
-        }
-
-        .message.mine {
-            align-self: flex-end;
-        }
+        .message { max-width: 85%; align-self: flex-start; }
+        .message.mine { align-self: flex-end; }
 
         .message-bubble {
             background: var(--card-bg);
@@ -161,7 +83,6 @@
             padding: clamp(0.6rem, 2vw, 0.9rem) clamp(0.8rem, 3vw, 1.2rem);
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
-            position: relative;
         }
 
         .message.mine .message-bubble {
@@ -170,52 +91,16 @@
             border: none;
         }
 
-        .message-sender {
-            font-size: clamp(0.75rem, 2.2vw, 0.85rem);
-            color: var(--primary);
-            font-weight: 600;
-            margin-bottom: 0.3rem;
-        }
+        .message-sender { font-size: clamp(0.75rem, 2.2vw, 0.85rem); color: var(--primary); font-weight: 600; margin-bottom: 0.3rem; }
+        .message-text { font-size: clamp(0.95rem, 3.5vw, 1.1rem); line-height: 1.5; word-wrap: break-word; }
+        .message-time { font-size: clamp(0.65rem, 2vw, 0.75rem); color: var(--text-muted); text-align: left; margin-top: 0.4rem; opacity: 0.7; }
+        .message.mine .message-time { text-align: right; color: rgba(255, 255, 255, 0.8); }
 
-        .message-text {
-            font-size: clamp(0.95rem, 3.5vw, 1.1rem);
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
-
-        .message-time {
-            font-size: clamp(0.65rem, 2vw, 0.75rem);
-            color: var(--text-muted);
-            text-align: left;
-            margin-top: 0.4rem;
-            opacity: 0.7;
-        }
-
-        .message.mine .message-time {
-            text-align: right;
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        /* === تایپینگ === */
-        .typing-indicator {
-            display: flex;
-            gap: 0.4rem;
-            padding: 0.8rem 1rem;
-            align-self: flex-start;
-        }
-
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--text-muted);
-            border-radius: 50%;
-            animation: typing 1.4s infinite;
-        }
-
+        .typing-indicator { display: flex; gap: 0.4rem; padding: 0.8rem 1rem; align-self: flex-start; }
+        .typing-dot { width: 8px; height: 8px; background: var(--text-muted); border-radius: 50%; animation: typing 1.4s infinite; }
         .typing-dot:nth-child(2) { animation-delay: 0.2s; }
         .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
-        /* === ورودی === */
         .input-container {
             display: flex;
             padding: clamp(0.6rem, 2vw, 0.9rem);
@@ -239,10 +124,7 @@
             transition: all 0.3s;
         }
 
-        #messageInput:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
-        }
+        #messageInput:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2); }
 
         .send-button {
             width: var(--input-height);
@@ -255,47 +137,17 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s;
-            flex-shrink: 0;
         }
 
-        .send-button:disabled {
-            background: var(--text-muted);
-            cursor: not-allowed;
-            transform: none;
-        }
+        .send-button:disabled { background: var(--text-muted); cursor: not-allowed; }
+        .send-button:not(:disabled):hover { background: var(--accent); transform: scale(1.1); }
+        .send-button svg { width: 55%; height: 55%; fill: white; }
 
-        .send-button svg {
-            width: 55%;
-            height: 55%;
-            fill: white;
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
-        .send-button:not(:disabled):hover {
-            background: var(--accent);
-            transform: scale(1.1);
-        }
-
-        /* === انیمیشن‌ها === */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        @keyframes typing {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
-        }
-
-        /* === ریسپانسیو === */
-        @media (max-width: 480px) {
-            .message { max-width: 92%; }
-            .chat-header { padding: 0.8rem 1rem; }
-            .input-container { padding: 0.6rem; }
-        }
-
-        @media (min-width: 768px) {
-            .chat-app { max-width: 800px; margin: 0 auto; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
-        }
+        @media (max-width: 480px) { .message { max-width: 92%; } }
+        @media (min-width: 768px) { .chat-app { max-width: 800px; margin: 0 auto; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); } }
     </style>
 </head>
 <body>
@@ -337,13 +189,60 @@
         const username = localStorage.getItem("username");
         if (!username) window.location.href = "/";
 
-        const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${username}`);
+        let ws;
+        let keepAliveInterval;
+
+        function connectWebSocket() {
+            ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${username}`);
+
+            ws.onopen = () => {
+                keepAliveInterval = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 30000);
+            };
+
+            ws.onmessage = (event) => {
+                let data;
+                try { data = JSON.parse(event.data); } catch { return; }
+
+                if (data.type === "pong") return;
+
+                if (data.type === "message") {
+                    addMessage(data.sender, data.text, data.sender === username);
+                }
+                else if (data.type === "join") {
+                    onlineUsers.add(data.username);
+                    if (data.username !== username) addSystemMessage(`${data.username} وارد چت شد`);
+                }
+                else if (data.type === "leave") {
+                    onlineUsers.delete(data.username);
+                    addSystemMessage(`${data.username} چت را ترک کرد`);
+                }
+                else if (data.type === "typing") {
+                    if (data.username !== username) {
+                        typingEl.style.display = 'flex';
+                        clearTimeout(typingTimer);
+                        typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+                    }
+                }
+                updateOnlineCount();
+            };
+
+            ws.onclose = () => {
+                clearInterval(keepAliveInterval);
+                setTimeout(connectWebSocket, 1000);
+            };
+        }
+
+        connectWebSocket();
+
         const messages = document.getElementById("messages");
         const input = document.getElementById("messageInput");
         const sendBtn = document.getElementById("sendBtn");
         const typingEl = document.getElementById("typing");
         const onlineCount = document.getElementById("online-count");
-
         let typingTimer;
         const onlineUsers = new Set();
 
@@ -385,7 +284,6 @@
             canvas.height = window.innerHeight;
         });
 
-        // توابع
         function addMessage(sender, text, isMine) {
             const msg = document.createElement("div");
             msg.className = `message ${isMine ? 'mine' : 'other'}`;
@@ -427,7 +325,7 @@
             const text = input.value.trim();
             if (!text || ws.readyState !== WebSocket.OPEN) return;
             ws.send(text);
-            addMessage(username, text, true); // نمایش فوری
+            addMessage(username, text, true);
             input.value = "";
             sendBtn.disabled = true;
             clearTimeout(typingTimer);
@@ -445,35 +343,6 @@
             sendBtn.disabled = !input.value.trim();
         }
 
-        // WebSocket
-        ws.onopen = () => {};
-
-        ws.onmessage = (event) => {
-            let data;
-            try { data = JSON.parse(event.data); } catch { return; }
-
-            if (data.type === "message") {
-                addMessage(data.sender, data.text, data.sender === username);
-            }
-            else if (data.type === "join") {
-                onlineUsers.add(data.username);
-                if (data.username !== username) addSystemMessage(`${data.username} وارد چت شد`);
-            }
-            else if (data.type === "leave") {
-                onlineUsers.delete(data.username);
-                addSystemMessage(`${data.username} چت را ترک کرد`);
-            }
-            else if (data.type === "typing") {
-                if (data.username !== username) {
-                    typingEl.style.display = 'flex';
-                    clearTimeout(typingTimer);
-                    typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
-                }
-            }
-            updateOnlineCount();
-        };
-
-        // رویدادها
         sendBtn.addEventListener("click", sendMessage);
         input.addEventListener("input", () => { toggleSendButton(); sendTyping(); });
         input.addEventListener("keydown", e => {
