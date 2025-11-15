@@ -42,6 +42,8 @@
         .replace(/\s+/g, ' ')
         .trim();
 
+    console.log("Login page - Raw:", rawUsername, "Clean:", cleanUsername);
+
     if (!cleanUsername) {
         alert("نام کاربری نامعتبر!");
         window.location.href = "/";
@@ -66,7 +68,8 @@
             const data = await res.json();
 
             if (data.success) {
-                localStorage.setItem("username", cleanUsername); // ذخیره تمیز
+                localStorage.setItem("username", cleanUsername);
+                console.log("Saved to localStorage:", cleanUsername);
                 window.location.href = "/chat";
             } else {
                 error.textContent = data.error || "رمز اشتباه است!";
@@ -84,5 +87,6 @@
 </script>
 </body>
 </html>
+
 
 
