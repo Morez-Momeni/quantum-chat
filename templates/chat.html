@@ -3,95 +3,31 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Chat</title>
+<title>Terminal Chat UI</title>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-    :root {
-        --color-primary: #0f0;
-        --color-mine: #00eaff;
-        --color-bg: #000;
-        --color-header: #111;
-        --color-border: #0f0;
-        --color-text: #08f708;
-        --color-system: #888;
-    }
-
     body {
         margin: 0;
-        background: var(--color-bg);
-        color: var(--color-text);
+        background: #000;
+        color: #08f708;
         font-family: "Vazirmatn", monospace;
         display: flex;
         flex-direction: column;
         height: 100vh;
         overflow: hidden;
         opacity: 0;
-        transition: opacity 0.8s ease-out;
+        transition: opacity 0.6s ease-out;
     }
-
-    /* --- اسکن‌لاین متحرک --- */
-    .scanlines {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background: repeating-linear-gradient(
-            0deg,
-            rgba(0,255,0,0.03),
-            rgba(0,255,0,0.03) 1px,
-            transparent 1px,
-            transparent 2px
-        );
-        pointer-events: none;
-        z-index: 5000;
-        animation: scan 8s linear infinite;
-    }
-    @keyframes scan {
-        0% { transform: translateY(-100%); }
-        100% { transform: translateY(100%); }
-    }
-
-    /* --- CRT Flicker --- */
-    .crt::before {
-        content: "";
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background: radial-gradient(circle at center, transparent 0%, rgba(0,255,0,0.02) 100%);
-        pointer-events: none;
-        z-index: 6000;
-        animation: flicker 0.15s infinite alternate;
-    }
-    @keyframes flicker {
-        0% { opacity: 0.98; }
-        100% { opacity: 1; }
-    }
-
-    /* --- Noise Overlay --- */
-    .crt::after {
-        content: "";
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background: url('https://i.imgur.com/8QfQqVY.png') repeat;
-        opacity: 0.04;
-        mix-blend-mode: screen;
-        pointer-events: none;
-        z-index: 7000;
-    }
-
     .terminal-header {
-        background: var(--color-header);
-        color: var(--color-primary);
+        background: #111;
+        color: #0f0;
         padding: 12px 18px;
         font-size: 1rem;
-        border-bottom: 2px solid var(--color-border);
+        border-bottom: 2px solid #0f0;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        position: relative;
-        z-index: 10;
     }
-
     .terminal-window {
         flex: 1;
         overflow-y: auto;
@@ -100,69 +36,82 @@
         line-height: 1.6;
         white-space: pre-wrap;
         scrollbar-width: none;
-        text-shadow: 0 0 4px #00ff00aa;
     }
     .terminal-window::-webkit-scrollbar { display: none; }
-
     .message-line {
         margin-bottom: 8px;
-        word-break: break-word;
     }
-    .mine { color: var(--color-mine); }
-    .other { color: var(--color-primary); }
+    .mine { color: #00eaff; }
+    .other { color: #0f0; }
     .system-msg {
-        color: var(--color-system);
+        color: #888;
         font-style: italic;
         margin: 10px 0;
         text-align: center;
-        font-size: 0.85rem;
     }
-
     .input-bar {
         display: flex;
-        background: var(--color-header);
-        border-top: 2px solid var(--color-border);
+        background: #111;
+        border-top: 2px solid #0f0;
         padding: 10px;
         align-items: center;
     }
-    #prompt {
-        color: var(--color-mine);
-        margin-right: 8px;
-        font-weight: bold;
-    }
     #messageInput {
         flex: 1;
-        background: transparent;
-        border: none;
-        color: var(--color-text);
+        background: #000;
+        border: 1px solid #0f0;
+        color: #0f0;
+        padding: 10px;
         font-size: 1rem;
         outline: none;
         font-family: inherit;
     }
     #sendBtn {
         width: 80px;
-        background: var(--color-primary);
+        background: #0f0;
         color: #000;
         border: none;
         font-weight: bold;
         cursor: pointer;
         margin-right: 10px;
         transition: 0.2s;
-        font-size: 0.9rem;
     }
-    #sendBtn:hover { background: var(--color-mine); color: #000; }
-    #sendBtn:disabled { background: #333; cursor: not-allowed; }
+    #sendBtn:hover { background: #00eaff; }
+    #sendBtn:disabled { background: #444; cursor: not-allowed; }
 
     .typing-indicator {
-        color: var(--color-primary);
-        font-size: 0.8rem;
+        color: #0f0;
+        font-size: 0.85rem;
+        margin-top: -5px;
         padding-left: 10px;
+    }
+    /* --- CRT Effects + Scanlines --- */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: repeating-linear-gradient(to bottom, rgba(0,255,0,0.05) 0, rgba(0,255,0,0.05) 2px, transparent 2px, transparent 4px);
+        pointer-events: none;
+        opacity: 0.25;
+        z-index: 5000;
+    }
+    body::after {
+        content: "";
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        background-image: url('https://i.imgur.com/8QfQqVY.png');
+        opacity: 0.03;
+        mix-blend-mode: screen;
+        z-index: 6000;
     }
     .cursor {
         display: inline-block;
         width: 8px;
         height: 18px;
-        background: var(--color-primary);
+        background: #0f0;
         margin-left: 4px;
         animation: cursorBlink 0.8s infinite;
     }
@@ -170,37 +119,95 @@
         0%, 50% { opacity: 1; }
         51%, 100% { opacity: 0; }
     }
+    .terminal-window {
+        text-shadow: 0 0 4px #00ff00aa;
+    }
 
-    /* --- تم‌های رنگی --- */
-    .theme-blue { --color-primary: #00f; --color-mine: #0ff; --color-border: #00f; }
-    .theme-red { --color-primary: #f00; --color-mine: #f88; --color-border: #f00; }
-    .theme-purple { --color-primary: #f0f; --color-mine: #f8f; --color-border: #f0f; }
+    /* --- WebRTC Video --- */
+    #remoteVideo, #localVideo {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        width: 240px;
+        height: 180px;
+        border: 2px solid #0f0;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 0 12px #0f0;
+        background: #000;
+    }
+    #localVideo {
+        width: 120px;
+        height: 90px;
+        bottom: 270px;
+        right: 20px;
+        border: 1px solid #0f0;
+    }
+    .meet-controls {
+        display: flex;
+        gap: 8px;
+        margin-right: 10px;
+    }
+    .meet-btn {
+        background: #333;
+        color: #0f0;
+        border: 1px solid #0f0;
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    .meet-btn.active { background: #0f0; color: #000; }
+    .meet-btn:hover { background: #0f0; color: #000; }
 </style>
 </head>
-<body class="crt" style="opacity: 0; transition: opacity 0.8s ease-out;">
-<div class="scanlines"></div>
-
+<body style="opacity: 0; transition: opacity 0.6s ease-out;">
 <div class="terminal-header">
-    <span>>> Quantum Terminal Chat v2.0</span>
+    <span>>> Terminal Chat + Meet</span>
     <span id="online-count">0 آنلاین</span>
 </div>
-
 <div id="messages" class="terminal-window"></div>
-<div id="typing" class="typing-indicator" style="display:none;">در حال تایپ...<span class="cursor"></span></div>
-
+<div id="typing" class="typing-indicator" style="display:none;">کاربر درحال تایپ...<span class="cursor"></span></div>
 <div class="input-bar">
-    <span id="prompt">[ممد@quantum] $</span>
-    <input id="messageInput" type="text" autocomplete="off" />
+    <input id="messageInput" type="text" placeholder="پیام بنویس..." autocomplete="off" />
+    <div class="meet-controls">
+        <button id="callBtn" class="meet-btn">تماس</button>
+        <button id="screenBtn" class="meet-btn">اشتراک صفحه</button>
+        <button id="micBtn" class="meet-btn active">میک</button>
+        <button id="camBtn" class="meet-btn active">دوربین</button>
+    </div>
     <button id="sendBtn" disabled>ارسال</button>
 </div>
 
-<script>
-    // --- تنظیمات اولیه ---
-    const rawUsername = localStorage.getItem("username") || "guest";
-    const cleanUsername = rawUsername.replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '').replace(/\s+/g, ' ').trim() || "guest";
-    document.getElementById("prompt").textContent = `[${cleanUsername}@quantum] $`;
+<video id="remoteVideo" autoplay playsinline></video>
+<video id="localVideo" autoplay playsinline muted></video>
 
-    let ws, keepAliveInterval, reconnectAttempts = 0, maxReconnect = 10;
+<script>
+    // --- دریافت و فیلتر سخت username ---
+    const rawUsername = localStorage.getItem("username");
+    console.log("Raw username from localStorage:", rawUsername);
+    if (!rawUsername || typeof rawUsername !== "string") {
+        alert("نام کاربری پیدا نشد یا نامعتبر است! لطفاً دوباره وارد شوید.");
+        localStorage.removeItem("username");
+        window.location.href = "/";
+        throw new Error("No valid username in localStorage");
+    }
+    const cleanUsername = rawUsername
+        .replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    console.log("Cleaned username:", cleanUsername);
+    if (!cleanUsername || cleanUsername.length < 1) {
+        alert("نام کاربری پس از فیلتر خالی است! دوباره وارد شوید.");
+        localStorage.removeItem("username");
+        window.location.href = "/";
+        throw new Error("Username empty after cleaning");
+    }
+
+    let ws;
+    let keepAliveInterval;
+    let reconnectAttempts = 0;
+    const maxReconnect = 10;
     const messages = document.getElementById("messages");
     const input = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
@@ -209,192 +216,275 @@
     let typingTimer;
     const onlineUsers = new Set();
 
-    // --- صدا ---
-    const typeSound = new Audio('https://cdn.freesound.org/previews/67/67496_634166-lq.mp3');
-    typeSound.volume = 0.15;
-    const notifySound = new Audio('https://cdn.freesound.org/previews/612/612538_5674468-lq.mp3');
-    notifySound.volume = 0.3;
+    // --- WebRTC ---
+    let pc = null;
+    let localStream = null;
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-    // --- توابع ---
     function showStatus(msg) {
-        addLine(`[SYSTEM] ${msg}`, "system-msg");
-    }
-
-    function addLine(text, className = "") {
         const line = document.createElement("div");
-        line.className = `message-line ${className}`;
-        line.innerHTML = text;
+        line.className = "system-msg";
+        line.textContent = `[SYSTEM] ${msg}`;
         messages.appendChild(line);
         messages.scrollTop = messages.scrollHeight;
     }
 
-    function addMessage(sender, text, isMine) {
-        const time = new Date().toLocaleTimeString('fa-IR', {hour: '2-digit', minute: '2-digit'});
-        const color = isMine ? 'mine' : 'other';
-        addLine(`<span>[${time}] ${sender}: </span><span>${escapeHtml(text)}</span>`, color);
-        if (!isMine) notifySound.play().catch(() => {});
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function updateOnlineCount() {
-        onlineCount.textContent = `${onlineUsers.size} آنلاین`;
-    }
-
-    // --- دستورات ---
-    function handleCommand(cmd) {
-        const [command, ...args] = cmd.split(' ');
-        const arg = args.join(' ');
-
-        switch (command) {
-            case '/clear':
-                messages.innerHTML = '';
-                return true;
-            case '/help':
-                addLine("دستورات: /clear, /nick نام, /theme green|blue|red|purple", "system-msg");
-                return true;
-            case '/nick':
-                if (arg) {
-                    const newName = arg.replace(/[^a-zA-Z0-9آ-ی\s]/g, '').trim();
-                    if (newName) {
-                        localStorage.setItem("username", newName);
-                        document.getElementById("prompt").textContent = `[${newName}@quantum] $`;
-                        showStatus(`نام تغییر کرد به: ${newName}`);
-                    }
-                }
-                return true;
-            case '/theme':
-                const themes = ['green', 'blue', 'red', 'purple'];
-                if (themes.includes(arg)) {
-                    document.body.className = `crt theme-${arg}`;
-                    showStatus(`تم تغییر کرد: ${arg}`);
-                }
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    // --- WebSocket ---
     function connectWebSocket() {
-        if (reconnectAttempts >= maxReconnect) return showStatus("اتصال ناموفق. رفرش کنید.");
-
+        if (reconnectAttempts >= maxReconnect) {
+            showStatus("اتصال ناموفق. صفحه را رفرش کنید.");
+            return;
+        }
         showStatus("در حال اتصال...");
-        const url = `${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${encodeURIComponent(cleanUsername)}`;
-
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const url = `${protocol}//${host}/ws/${encodeURIComponent(cleanUsername)}`;
+        console.log("Final WebSocket URL:", url);
         try {
             ws = new WebSocket(url);
-
             ws.onopen = () => {
                 reconnectAttempts = 0;
                 showStatus("متصل شدی!");
                 keepAliveInterval = setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'ping' }));
+                    }
                 }, 30000);
             };
-
-            ws.onmessage = (e) => {
+            ws.onmessage = (event) => {
                 let data;
-                try { data = JSON.parse(e.data); } catch { return; }
+                try { data = JSON.parse(event.data); } catch { return; }
                 if (data.type === "pong") return;
 
-                if (data.type === "message") addMessage(data.sender, data.text, data.sender === cleanUsername);
-                else if (data.type === "join") { onlineUsers.add(data.username); if (data.username !== cleanUsername) addLine(`--- ${data.username} وارد شد ---`, "system-msg"); }
-                else if (data.type === "leave") { onlineUsers.delete(data.username); addLine(`--- ${data.username} خارج شد ---`, "system-msg"); }
-                else if (data.type === "typing" && data.username !== cleanUsername) {
-                    typingEl.style.display = 'block';
-                    clearTimeout(typingTimer);
-                    typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+                if (data.type === "message") {
+                    addMessage(data.sender, data.text, data.sender === cleanUsername);
+                }
+                else if (data.type === "join") {
+                    onlineUsers.add(data.username);
+                    if (data.username !== cleanUsername) addSystemMessage(`${data.username} وارد شد`);
+                }
+                else if (data.type === "leave") {
+                    onlineUsers.delete(data.username);
+                    addSystemMessage(`${data.username} خارج شد`);
+                }
+                else if (data.type === "typing") {
+                    if (data.username !== cleanUsername) {
+                        typingEl.style.display = 'block';
+                        clearTimeout(typingTimer);
+                        typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+                    }
+                }
+                // --- WebRTC Signaling ---
+                else if (data.type === "offer" && !pc) {
+                    handleOffer(data.offer);
+                }
+                else if (data.type === "answer" && pc) {
+                    pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                }
+                else if (data.type === "ice" && pc) {
+                    pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                 }
                 updateOnlineCount();
             };
-
-            ws.onerror = () => showStatus("خطا در اتصال");
+            ws.onerror = () => showStatus("خطا در اتصال WebSocket");
             ws.onclose = () => {
                 clearInterval(keepAliveInterval);
                 showStatus("اتصال قطع شد. تلاش مجدد...");
                 reconnectAttempts++;
                 setTimeout(connectWebSocket, 2000 * reconnectAttempts);
             };
-
         } catch (err) {
             showStatus("خطا در ساخت WebSocket");
+            console.error("WebSocket creation failed:", err, { url, cleanUsername });
         }
     }
-
     connectWebSocket();
 
-    // --- ارسال ---
+    function addMessage(sender, text, isMine) {
+        const line = document.createElement("div");
+        line.className = `message-line ${isMine ? 'mine' : 'other'}`;
+        const time = new Date().toLocaleTimeString('fa-IR', {hour: '2-digit', minute: '2-digit'});
+        line.innerHTML = `<span>[${time}] ${sender}: </span><span>${escapeHtml(text)}</span>`;
+        messages.appendChild(line);
+        messages.scrollTop = messages.scrollHeight;
+    }
+    function addSystemMessage(text) {
+        const line = document.createElement("div");
+        line.className = "system-msg";
+        line.textContent = `--- ${text} ---`;
+        messages.appendChild(line);
+        messages.scrollTop = messages.scrollHeight;
+    }
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    function updateOnlineCount() {
+        onlineCount.textContent = `${onlineUsers.size} آنلاین`;
+    }
+
+    // --- WebRTC: شروع تماس ---
+    async function startCall() {
+        if (pc) return showStatus("تماس در حال انجام است!");
+        pc = new RTCPeerConnection(config);
+
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        localVideo.srcObject = localStream;
+        localVideo.style.display = "block";
+
+        pc.ontrack = (e) => {
+            remoteVideo.srcObject = e.streams[0];
+            remoteVideo.style.display = "block";
+        };
+
+        pc.onicecandidate = (e) => {
+            if (e.candidate) {
+                ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+            }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        ws.send(JSON.stringify({ type: 'offer', offer }));
+        showStatus("در حال شروع تماس...");
+    }
+
+    // --- WebRTC: دریافت تماس ---
+    async function handleOffer(offer) {
+        if (pc) return;
+        pc = new RTCPeerConnection(config);
+
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        localVideo.srcObject = localStream;
+        localVideo.style.display = "block";
+
+        pc.ontrack = (e) => {
+            remoteVideo.srcObject = e.streams[0];
+            remoteVideo.style.display = "block";
+        };
+
+        pc.onicecandidate = (e) => {
+            if (e.candidate) ws.send(JSON.stringify({ type: 'ice', candidate: e.candidate }));
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        ws.send(JSON.stringify({ type: 'answer', answer }));
+    }
+
+    // --- اشتراک صفحه ---
+    async function shareScreen() {
+        if (!pc) return showStatus("ابتدا تماس را شروع کنید!");
+        const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) sender.replaceTrack(screen.getTracks()[0]);
+        screen.getTracks()[0].onended = () => {
+            if (sender) sender.replaceTrack(localStream.getVideoTracks()[0]);
+        };
+    }
+
+    // --- دکمه‌ها ---
+    document.getElementById("callBtn").onclick = startCall;
+    document.getElementById("screenBtn").onclick = shareScreen;
+    document.getElementById("micBtn").onclick f = () => {
+        if (localStream) {
+            const enabled = localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
+            document.getElementById("micBtn").classList.toggle("active", enabled);
+        }
+    };
+    document.getElementById("camBtn").onclick = () => {
+        if (localStream) {
+            const enabled = localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled;
+            document.getElementById("camBtn").classList.toggle("active", enabled);
+        }
+    };
+
     function sendMessage() {
         const text = input.value.trim();
         if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-        if (text.startsWith('/')) {
-            if (handleCommand(text.slice(1))) {
-                input.value = "";
-                return;
-            }
+        try {
+            ws.send(text);
+            input.value = "";
+            sendBtn.disabled = true;
+            clearTimeout(typingTimer);
+            typingEl.style.display = 'none';
+        } catch (err) {
+            showStatus("خطا در ارسال");
         }
-
-        ws.send(text);
-        input.value = "";
-        sendBtn.disabled = true;
-        clearTimeout(typingTimer);
-        typingEl.style.display = 'none';
     }
-
     function sendTyping() {
         if (ws?.readyState === WebSocket.OPEN && input.value.trim()) {
             clearTimeout(typingTimer);
             ws.send(JSON.stringify({ type: 'typing' }));
         }
     }
-
     function toggleSendButton() {
         const hasText = input.value.trim().length > 0;
         const isConnected = ws?.readyState === WebSocket.OPEN;
         sendBtn.disabled = !hasText || !isConnected;
     }
 
-    // --- رویدادها ---
     sendBtn.addEventListener("click", sendMessage);
     input.addEventListener("input", () => { toggleSendButton(); sendTyping(); });
     input.addEventListener("keydown", e => {
-        if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
-        else if (e.key.length === 1) { typeSound.currentTime = 0; typeSound.play().catch(() => {}); }
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendMessage();
+        }
     });
     setInterval(toggleSendButton, 500);
     toggleSendButton();
 </script>
 
 <script>
-    // --- بوت حرفه‌ای ---
+    // --- Typewriter sound effect ---
+    const typeSound = new Audio('https://cdn.freesound.org/previews/67/67496_634166-lq.mp3');
+    typeSound.volume = 0.2;
+    document.addEventListener('keydown', (e) => {
+        if (e.key.length === 1) {
+            typeSound.currentTime = 0;
+            typeSound.play().catch(() => {});
+        }
+    });
+</script>
+
+<script>
+    // --- Fake BIOS boot sequence ---
     window.addEventListener('load', () => {
         const boot = document.createElement('div');
-        boot.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:black;color:#0f0;font-family:monospace;padding:30px;font-size:18px;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;';
-        boot.innerHTML = `<pre>Booting Quantum-Term v2.0...
-Initializing quantum core... OK
-Loading neural interface... OK
-Connecting to matrix... OK
-Authenticated as: <span style="color:#00eaff">${cleanUsername}</span>
-
-<span style="color:#0f0;animation:blink 1s infinite;">►</span> READY.</pre>`;
+        boot.style.cssText = `
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: black;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+            font-size: 18px;
+            z-index: 99999;
+            white-space: pre;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        `;
+        boot.textContent = `Booting Retro-Term v3.88...
+Initializing memory... OK
+Loading kernel modules... OK
+Starting CRT interface... OK
+Connected as: ${cleanUsername}
+>>> READY.`;
         document.body.appendChild(boot);
-
         setTimeout(() => {
             boot.remove();
             document.body.style.opacity = '1';
-        }, 3000);
+        }, 2500);
     });
-
-    // انیمیشن چشمک
-    const style = document.createElement('style');
-    style.textContent = `@keyframes blink { 0%,50% { opacity:1 } 51%,100% { opacity:0 } }`;
-    document.head.appendChild(style);
 </script>
 </body>
 </html>
