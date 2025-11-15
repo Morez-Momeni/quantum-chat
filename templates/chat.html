@@ -211,10 +211,78 @@
     }
 
     function connectWebSocket() {
-        if (reconnectAttempts >= maxReconnect) {
-            showStatus("اتصال ناموفق. صفحه را رفرش کنید.");
-            return;
-        }
+    if (reconnectAttempts >= maxReconnect) {
+        showStatus("اتصال ناموفق. صفحه را رفرش کنید.");
+        return;
+    }
+
+    showStatus("در حال اتصال...");
+
+    // ساخت URL امن
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const encodedUsername = encodeURIComponent(cleanUsername);
+    const path = `/ws/${encodedUsername}`;
+    const url = `${protocol}//${host}${path}`;
+
+    console.log("Final WebSocket URL:", url); // دیباگ
+
+    // حذف چک includes — چون فارسی URL-encoded میشه
+    // if (!url.includes(cleanUsername)) → اشتباه!
+
+    try {
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+            reconnectAttempts = 0;
+            showStatus("متصل شدی!");
+
+            keepAliveInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 30000);
+        };
+
+        ws.onmessage = (event) => {
+            let data;
+            try { data = JSON.parse(event.data); } catch { return; }
+            if (data.type === "pong") return;
+
+            if (data.type === "message") {
+                addMessage(data.sender, data.text, data.sender === cleanUsername);
+            }
+            else if (data.type === "join") {
+                onlineUsers.add(data.username);
+                if (data.username !== cleanUsername) addSystemMessage(`${data.username} وارد شد`);
+            }
+            else if (data.type === "leave") {
+                onlineUsers.delete(data.username);
+                addSystemMessage(`${data.username} خارج شد`);
+            }
+            else if (data.type === "typing") {
+                if (data.username !== cleanUsername) {
+                    typingEl.style.display = 'block';
+                    clearTimeout(typingTimer);
+                    typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+                }
+            }
+            updateOnlineCount();
+        };
+
+        ws.onerror = () => showStatus("خطا در اتصال WebSocket");
+        ws.onclose = () => {
+            clearInterval(keepAliveInterval);
+            showStatus("اتصال قطع شد. تلاش مجدد...");
+            reconnectAttempts++;
+            setTimeout(connectWebSocket, 2000 * reconnectAttempts);
+        };
+
+    } catch (err) {
+        showStatus("خطا در ساخت WebSocket");
+        console.error("WebSocket creation failed:", err, { url, cleanUsername });
+    }
+}
 
         showStatus("در حال اتصال...");
 
@@ -415,5 +483,6 @@ Connected as: ${cleanUsername}
 </script>
 </body>
 </html>
+
 
 
