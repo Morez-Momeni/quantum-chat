@@ -1,3 +1,141 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terminal Chat UI</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+    body {
+        margin: 0;
+        background: #000;
+        color: #08f708;
+        font-family: "Vazirmatn", monospace;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        opacity: 0;
+        transition: opacity 0.6s ease-out;
+    }
+    .terminal-header {
+        background: #111;
+        color: #0f0;
+        padding: 12px 18px;
+        font-size: 1rem;
+        border-bottom: 2px solid #0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .terminal-window {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        scrollbar-width: none;
+    }
+    .terminal-window::-webkit-scrollbar { display: none; }
+    .message-line {
+        margin-bottom: 8px;
+    }
+    .mine { color: #00eaff; }
+    .other { color: #0f0; }
+    .system-msg {
+        color: #888;
+        font-style: italic;
+        margin: 10px 0;
+        text-align: center;
+    }
+    .input-bar {
+        display: flex;
+        background: #111;
+        border-top: 2px solid #0f0;
+        padding: 10px;
+    }
+    #messageInput {
+        flex: 1;
+        background: #000;
+        border: 1px solid #0f0;
+        color: #0f0;
+        padding: 10px;
+        font-size: 1rem;
+        outline: none;
+        font-family: inherit;
+    }
+    #sendBtn {
+        width: 80px;
+        background: #0f0;
+        color: #000;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+        margin-right: 10px;
+        transition: 0.2s;
+    }
+    #sendBtn:hover { background: #00eaff; }
+    #sendBtn:disabled { background: #444; cursor: not-allowed; }
+    .typing-indicator {
+        color: #0f0;
+        font-size: 0.85rem;
+        margin-top: -5px;
+        padding-left: 10px;
+    }
+    /* --- CRT Effects + Scanlines --- */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: repeating-linear-gradient(to bottom, rgba(0,255,0,0.05) 0, rgba(0,255,0,0.05) 2px, transparent 2px, transparent 4px);
+        pointer-events: none;
+        opacity: 0.25;
+        z-index: 5000;
+    }
+    /* --- Terminal noise overlay --- */
+    body::after {
+        content: "";
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        background-image: url('https://i.imgur.com/8QfQqVY.png');
+        opacity: 0.03;
+        mix-blend-mode: screen;
+        z-index: 6000;
+    }
+    /* --- Typing cursor animation --- */
+    .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 18px;
+        background: #0f0;
+        margin-left: 4px;
+        animation: cursorBlink 0.8s infinite;
+    }
+    @keyframes cursorBlink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+    .terminal-window {
+        text-shadow: 0 0 4px #00ff00aa;
+    }
+</style>
+</head>
+<body style="opacity: 0; transition: opacity 0.6s ease-out;">
+<div class="terminal-header">
+    <span>>> Terminal Chat Online</span>
+    <span id="online-count">0 آنلاین</span>
+</div>
+<div id="messages" class="terminal-window"></div>
+<div id="typing" class="typing-indicator" style="display:none;">کاربر درحال تایپ...<span class="cursor"></span></div>
+<div class="input-bar">
+    <input id="messageInput" type="text" placeholder="پیام بنویس..." autocomplete="off" />
+    <button id="sendBtn" disabled>ارسال</button>
+</div>
+
 <script>
     // --- دریافت و فیلتر سخت username ---
     const rawUsername = localStorage.getItem("username");
@@ -46,7 +184,6 @@
         messages.scrollTop = messages.scrollHeight;
     }
 
-    // --- فقط یک تابع connectWebSocket ---
     function connectWebSocket() {
         if (reconnectAttempts >= maxReconnect) {
             showStatus("اتصال ناموفق. صفحه را رفرش کنید.");
@@ -57,12 +194,10 @@
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        const encodedUsername = encodeURIComponent(cleanUsername);
-        const url = `${protocol}//${host}/ws/${encodedUsername}`;
+        const url = `${protocol}//${host}/ws/${encodeURIComponent(cleanUsername)}`;
 
         console.log("Final WebSocket URL:", url);
 
-        // حذف چک includes — فارسی URL-encoded میشه
         try {
             ws = new WebSocket(url);
 
@@ -196,46 +331,43 @@
             typeSound.play().catch(() => {});
         }
     });
+</script>
 
-    // --- CRT ON/OFF animation ---
-    function crtOff() {
-        const screen = document.body;
-        screen.style.transition = 'all 0.4s ease-in';
-        screen.style.transform = 'scaleY(0)';
-        screen.style.opacity = '0';
-    }
-    function crtOn() {
-        const screen = document.body;
-        screen.style.transition = 'all 0.6s ease-out';
-        screen.style.transform = 'scaleY(1)';
-        screen.style.opacity = '1';
-    }
-
-    // Add fake BIOS boot sequence
+<script>
+    // --- Fake BIOS boot sequence ---
     window.addEventListener('load', () => {
         const boot = document.createElement('div');
-        boot.style.position = 'fixed';
-        boot.style.top = '0';
-        boot.style.left = '0';
-        boot.style.width = '100%';
-        boot.style.height = '100%';
-        boot.style.background = 'black';
-        boot.style.color = '#0f0';
-        boot.style.fontFamily = 'monospace';
-        boot.style.padding = '20px';
-        boot.style.fontSize = '18px';
-        boot.style.zIndex = '99999';
-        boot.style.whiteSpace = 'pre';
+        boot.style.cssText = `
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: black;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+            font-size: 18px;
+            z-index: 99999;
+            white-space: pre;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        `;
         boot.textContent = `Booting Retro-Term v3.88...
 Initializing memory... OK
 Loading kernel modules... OK
 Starting CRT interface... OK
 Connected as: ${cleanUsername}
+
 >>> READY.`;
+
         document.body.appendChild(boot);
+
         setTimeout(() => {
-            crtOn();
-            setTimeout(() => boot.remove(), 600);
+            boot.remove();
+            document.body.style.opacity = '1';
         }, 2500);
     });
 </script>
+</body>
+</html>
