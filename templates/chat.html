@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Quantum Terminal Meet</title>
+<title>Chat </title>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
     body {
@@ -54,7 +54,6 @@
         background: #111;
         border-top: 2px solid #0f0;
         padding: 10px;
-        align-items: center;
     }
     #messageInput {
         flex: 1;
@@ -78,7 +77,6 @@
     }
     #sendBtn:hover { background: #00eaff; }
     #sendBtn:disabled { background: #444; cursor: not-allowed; }
-
     .typing-indicator {
         color: #0f0;
         font-size: 0.85rem;
@@ -96,6 +94,7 @@
         opacity: 0.25;
         z-index: 5000;
     }
+    /* --- Terminal noise overlay --- */
     body::after {
         content: "";
         position: fixed;
@@ -107,6 +106,7 @@
         mix-blend-mode: screen;
         z-index: 6000;
     }
+    /* --- Typing cursor animation --- */
     .cursor {
         display: inline-block;
         width: 8px;
@@ -122,82 +122,39 @@
     .terminal-window {
         text-shadow: 0 0 4px #00ff00aa;
     }
-
-    /* --- WebRTC Video --- */
-    #remoteVideo, #localVideo {
-        position: fixed;
-        bottom: 80px;
-        right: 20px;
-        width: 240px;
-        height: 180px;
-        border: 2px solid #0f0;
-        z-index: 1000;
-        display: none;
-        box-shadow: 0 0 12px #0f0;
-        background: #000;
-    }
-    #localVideo {
-        width: 120px;
-        height: 90px;
-        bottom: 270px;
-        right: 20px;
-        border: 1px solid #0f0;
-    }
-    .meet-controls {
-        display: flex;
-        gap: 8px;
-        margin-right: 10px;
-    }
-    .meet-btn {
-        background: #333;
-        color: #0f0;
-        border: 1px solid #0f0;
-        padding: 6px 10px;
-        font-size: 0.8rem;
-        cursor: pointer;
-        border-radius: 4px;
-    }
-    .meet-btn.active { background: #0f0; color: #000; }
-    .meet-btn:hover { background: #0f0; color: #000; }
 </style>
 </head>
 <body style="opacity: 0; transition: opacity 0.6s ease-out;">
 <div class="terminal-header">
-    <span>>> Quantum Terminal Meet</span>
+    <span>>> Terminal Chat Online</span>
     <span id="online-count">0 آنلاین</span>
 </div>
 <div id="messages" class="terminal-window"></div>
 <div id="typing" class="typing-indicator" style="display:none;">کاربر درحال تایپ...<span class="cursor"></span></div>
 <div class="input-bar">
     <input id="messageInput" type="text" placeholder="پیام بنویس..." autocomplete="off" />
-    <div class="meet-controls">
-        <button id="callBtn" class="meet-btn">تماس</button>
-        <button id="screenBtn" class="meet-btn">اشتراک صفحه</button>
-        <button id="hangupBtn" class="meet-btn" style="background:#f00;color:#fff;display:none;">قطع</button>
-        <button id="micBtn" class="meet-btn active">میک</button>
-        <button id="camBtn" class="meet-btn active">دوربین</button>
-    </div>
     <button id="sendBtn" disabled>ارسال</button>
 </div>
-
-<video id="remoteVideo" autoplay playsinline></video>
-<video id="localVideo" autoplay playsinline muted></video>
 
 <script>
     // --- دریافت و فیلتر سخت username ---
     const rawUsername = localStorage.getItem("username");
     console.log("Raw username from localStorage:", rawUsername);
+
     if (!rawUsername || typeof rawUsername !== "string") {
         alert("نام کاربری پیدا نشد یا نامعتبر است! لطفاً دوباره وارد شوید.");
         localStorage.removeItem("username");
         window.location.href = "/";
         throw new Error("No valid username in localStorage");
     }
+
     const cleanUsername = rawUsername
         .replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
+
     console.log("Cleaned username:", cleanUsername);
+
     if (!cleanUsername || cleanUsername.length < 1) {
         alert("نام کاربری پس از فیلتر خالی است! دوباره وارد شوید.");
         localStorage.removeItem("username");
@@ -209,22 +166,15 @@
     let keepAliveInterval;
     let reconnectAttempts = 0;
     const maxReconnect = 10;
+
     const messages = document.getElementById("messages");
     const input = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
     const typingEl = document.getElementById("typing");
     const onlineCount = document.getElementById("online-count");
+
     let typingTimer;
     const onlineUsers = new Set();
-
-    // --- WebRTC ---
-    let pc = null;
-    let localStream = null;
-    let targetUser = null;
-    const localVideo = document.getElementById("localVideo");
-    const remoteVideo = document.getElementById("remoteVideo");
-    const hangupBtn = document.getElementById("hangupBtn");
-    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
     function showStatus(msg) {
         const line = document.createElement("div");
@@ -239,28 +189,34 @@
             showStatus("اتصال ناموفق. صفحه را رفرش کنید.");
             return;
         }
+
         showStatus("در حال اتصال...");
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
         const url = `${protocol}//${host}/ws/${encodeURIComponent(cleanUsername)}`;
+
         console.log("Final WebSocket URL:", url);
+
         try {
             ws = new WebSocket(url);
+
             ws.onopen = () => {
                 reconnectAttempts = 0;
                 showStatus("متصل شدی!");
+
                 keepAliveInterval = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'ping' }));
                     }
                 }, 30000);
             };
+
             ws.onmessage = (event) => {
                 let data;
                 try { data = JSON.parse(event.data); } catch { return; }
                 if (data.type === "pong") return;
 
-                // --- فقط پیام‌های چت نمایش داده بشن ---
                 if (data.type === "message") {
                     addMessage(data.sender, data.text, data.sender === cleanUsername);
                 }
@@ -271,28 +227,17 @@
                 else if (data.type === "leave") {
                     onlineUsers.delete(data.username);
                     addSystemMessage(`${data.username} خارج شد`);
-                    if (data.username === targetUser) endCall();
                 }
-                else if (data.type === "typing" && data.username !== cleanUsername) {
-                    typingEl.style.display = 'block';
-                    clearTimeout(typingTimer);
-                    typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+                else if (data.type === "typing") {
+                    if (data.username !== cleanUsername) {
+                        typingEl.style.display = 'block';
+                        clearTimeout(typingTimer);
+                        typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+                    }
                 }
-
-                // --- WebRTC Signaling: فقط برای کاربر هدف ---
-                else if (data.type === "offer" && data.to === cleanUsername && !pc) {
-                    targetUser = data.from;
-                    handleOffer(data.offer);
-                }
-                else if (data.type === "answer" && pc && data.from === targetUser) {
-                    pc.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(() => {});
-                }
-                else if (data.type === "ice" && pc && data.from === targetUser) {
-                    pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
-                }
-
                 updateOnlineCount();
             };
+
             ws.onerror = () => showStatus("خطا در اتصال WebSocket");
             ws.onclose = () => {
                 clearInterval(keepAliveInterval);
@@ -300,11 +245,13 @@
                 reconnectAttempts++;
                 setTimeout(connectWebSocket, 2000 * reconnectAttempts);
             };
+
         } catch (err) {
             showStatus("خطا در ساخت WebSocket");
-            console.error("WebSocket creation failed:", err);
+            console.error("WebSocket creation failed:", err, { url, cleanUsername });
         }
     }
+
     connectWebSocket();
 
     function addMessage(sender, text, isMine) {
@@ -315,6 +262,7 @@
         messages.appendChild(line);
         messages.scrollTop = messages.scrollHeight;
     }
+
     function addSystemMessage(text) {
         const line = document.createElement("div");
         line.className = "system-msg";
@@ -322,156 +270,16 @@
         messages.appendChild(line);
         messages.scrollTop = messages.scrollHeight;
     }
+
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
+
     function updateOnlineCount() {
         onlineCount.textContent = `${onlineUsers.size} آنلاین`;
     }
-
-    // --- شروع تماس ---
-    async function startCall() {
-        if (pc) return showStatus("تماس در حال انجام است!");
-        if (onlineUsers.size < 2) return showStatus("هیچ کاربری آنلاین نیست!");
-
-        targetUser = [...onlineUsers].find(u => u !== cleanUsername);
-        if (!targetUser) return showStatus("کاربر هدف پیدا نشد.");
-
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            pc = new RTCPeerConnection(config);
-
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            localVideo.srcObject = localStream;
-            localVideo.style.display = "block";
-
-            pc.ontrack = (e) => {
-                remoteVideo.srcObject = e.streams[0];
-                remoteVideo.style.display = "block";
-            };
-
-            pc.onicecandidate = (e) => {
-                if (e.candidate && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        type: 'ice',
-                        candidate: e.candidate,
-                        from: cleanUsername,
-                        to: targetUser
-                    }));
-                }
-            };
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            ws.send(JSON.stringify({
-                type: 'offer',
-                offer,
-                from: cleanUsername,
-                to: targetUser
-            }));
-            showStatus(`در حال تماس با ${targetUser}...`);
-            hangupBtn.style.display = "inline-block";
-        } catch (err) {
-            showStatus("دسترسی به دوربین/میک رد شد.");
-            console.error("WebRTC error:", err);
-        }
-    }
-
-    // --- دریافت تماس ---
-    async function handleOffer(offer) {
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            pc = new RTCPeerConnection(config);
-
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            localVideo.srcObject = localStream;
-            localVideo.style.display = "block";
-
-            pc.ontrack = (e) => {
-                remoteVideo.srcObject = e.streams[0];
-                remoteVideo.style.display = "block";
-            };
-
-            pc.onicecandidate = (e) => {
-                if (e.candidate && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        type: 'ice',
-                        candidate: e.candidate,
-                        from: cleanUsername,
-                        to: targetUser
-                    }));
-                }
-            };
-
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            ws.send(JSON.stringify({
-                type: 'answer',
-                answer,
-                from: cleanUsername,
-                to: targetUser
-            }));
-            showStatus(`تماس از ${targetUser} — در حال اتصال...`);
-            hangupBtn.style.display = "inline-block";
-        } catch (err) {
-            showStatus("خطا در دریافت تماس.");
-            console.error("Handle offer error:", err);
-        }
-    }
-
-    // --- اشتراک صفحه ---
-    async function shareScreen() {
-        if (!pc) return showStatus("ابتدا تماس را شروع کنید!");
-        try {
-            const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-            if (sender) sender.replaceTrack(screen.getTracks()[0]);
-            screen.getTracks()[0].onended = () => {
-                if (sender && localStream) sender.replaceTrack(localStream.getVideoTracks()[0]);
-            };
-        } catch (err) {
-            showStatus("اشتراک صفحه لغو شد.");
-        }
-    }
-
-    // --- قطع تماس ---
-    function endCall() {
-        if (pc) {
-            pc.close();
-            pc = null;
-        }
-        if (localStream) {
-            localStream.getTracks().forEach(t => t.stop());
-            localStream = null;
-        }
-        localVideo.srcObject = null;
-        remoteVideo.srcObject = null;
-        localVideo.style.display = "none";
-        remoteVideo.style.display = "none";
-        targetUser = null;
-        hangupBtn.style.display = "none";
-        showStatus("تماس قطع شد.");
-    }
-
-    // --- دکمه‌ها ---
-    document.getElementById("callBtn").onclick = startCall;
-    document.getElementById("screenBtn").onclick = shareScreen;
-    document.getElementById("hangupBtn").onclick = endCall;
-    document.getElementById("micBtn").onclick = () => {
-        if (localStream) {
-            const enabled = localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
-            document.getElementById("micBtn").classList.toggle("active", enabled);
-        }
-    };
-    document.getElementById("camBtn").onclick = () => {
-        if (localStream) {
-            const enabled = localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled;
-            document.getElementById("camBtn").classList.toggle("active", enabled);
-        }
-    };
 
     function sendMessage() {
         const text = input.value.trim();
@@ -486,12 +294,14 @@
             showStatus("خطا در ارسال");
         }
     }
+
     function sendTyping() {
         if (ws?.readyState === WebSocket.OPEN && input.value.trim()) {
             clearTimeout(typingTimer);
             ws.send(JSON.stringify({ type: 'typing' }));
         }
     }
+
     function toggleSendButton() {
         const hasText = input.value.trim().length > 0;
         const isConnected = ws?.readyState === WebSocket.OPEN;
@@ -506,6 +316,7 @@
             sendMessage();
         }
     });
+
     setInterval(toggleSendButton, 500);
     toggleSendButton();
 </script>
@@ -542,12 +353,16 @@
             justify-content: center;
             text-align: center;
         `;
-        boot.textContent = `Booting Quantum-Term v4.0...
-Initializing WebRTC core... OK
-Loading video codec... OK
+        boot.textContent = `Booting Retro-Term v3.88...
+Initializing memory... OK
+Loading kernel modules... OK
+Starting CRT interface... OK
 Connected as: ${cleanUsername}
+
 >>> READY.`;
+
         document.body.appendChild(boot);
+
         setTimeout(() => {
             boot.remove();
             document.body.style.opacity = '1';
