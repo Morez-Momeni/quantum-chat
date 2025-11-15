@@ -160,15 +160,25 @@
 </div>
 
 <script>
-    // --- دریافت و فیلتر username ---
+    // --- دریافت و فیلتر سخت username ---
     const rawUsername = localStorage.getItem("username");
-    const cleanUsername = rawUsername?.replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '').replace(/\s+/g, ' ').trim();
+    if (!rawUsername) {
+        alert("نام کاربری پیدا نشد! لطفاً دوباره وارد شوید.");
+        window.location.href = "/";
+        throw new Error("No username in localStorage");
+    }
 
-    if (!cleanUsername) {
-        alert("نام کاربری نامعتبر است!");
+    // فقط حروف، اعداد، فارسی، فاصله (نه در ابتدا/انتها)
+    const cleanUsername = rawUsername
+        .replace(/[^a-zA-Z0-9آ-ی\u0600-\u06FF\s]/g, '')  // حذف : / \ " ' < >
+        .replace(/\s+/g, ' ')                             // چند فاصله → یک فاصله
+        .trim();                                          // حذف فاصله ابتدا/انتها
+
+    if (!cleanUsername || cleanUsername.length < 1) {
+        alert("نام کاربری نامعتبر است! دوباره وارد شوید.");
         localStorage.removeItem("username");
         window.location.href = "/";
-        throw new Error("Invalid username");
+        throw new Error("Invalid username after cleaning");
     }
 
     let ws;
@@ -195,12 +205,19 @@
 
     function connectWebSocket() {
         if (reconnectAttempts >= maxReconnect) {
-            showStatus("اتصال ناموفق. صفحه را رفرش کنید.");
-            return;
+        showStatus("اتصال ناموفق. صفحه را رفرش کنید.");
+        return;
         }
 
-        const url = `${window.location.protocol === 'https:' ? 'wss:' : 'ws'}://${window.location.host}/ws/${encodeURIComponent(cleanUsername)}`;
-        console.log("Connecting to:", url);
+        showStatus("در حال اتصال...");
+
+        // ساخت URL امن
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const path = `/ws/${encodeURIComponent(cleanUsername)}`;
+        const url = `${protocol}//${host}${path}`;
+
+        console.log("Connecting to WebSocket:", url); // برای دیباگ
 
         try {
             ws = new WebSocket(url);
@@ -236,13 +253,17 @@
                     if (data.username !== cleanUsername) {
                         typingEl.style.display = 'block';
                         clearTimeout(typingTimer);
-                        typingTimer = setTimeout(() => typingEl.style.display = 'none', 1500);
+                        typingTimer = setTimedout(() => typingEl.style.display = 'none', 1500);
                     }
                 }
                 updateOnlineCount();
             };
 
-            ws.onerror = () => showStatus("خطا در اتصال");
+            ws.onerror = (err) => {
+                showStatus("خطا در اتصال WebSocket");
+                console.error("WebSocket error:", err);
+            };
+
             ws.onclose = () => {
                 clearInterval(keepAliveInterval);
                 showStatus("اتصال قطع شد. تلاش مجدد...");
@@ -251,8 +272,8 @@
             };
 
         } catch (err) {
-            showStatus("خطا در ساخت WebSocket");
-            console.error(err);
+            showStatus("خطا در ساخت URL WebSocket");
+            console.error("Failed to create WebSocket:", err, { url, cleanUsername });
         }
     }
 
@@ -287,7 +308,10 @@
 
     function sendMessage() {
         const text = input.value.trim();
-        if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+        if (!text || !ws || ws.readyState !== WebSocket.OPEN) {
+            showStatus("اتصال برقرار نیست!");
+            return;
+        }
         try {
             ws.send(text);
             input.value = "";
@@ -296,6 +320,7 @@
             typingEl.style.display = 'none';
         } catch (err) {
             showStatus("خطا در ارسال");
+            console.error(err);
         }
     }
 
@@ -313,7 +338,10 @@
     }
 
     sendBtn.addEventListener("click", sendMessage);
-    input.addEventListener("input", () => { toggleSendButton(); sendTyping(); });
+    input.addEventListener("input", () => {
+        toggleSendButton();
+        sendTyping();
+    });
     input.addEventListener("keydown", e => {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -324,8 +352,6 @@
     setInterval(toggleSendButton, 500);
     toggleSendButton();
 </script>
-
-<script>
     // --- Typewriter sound effect ---
     const typeSound = new Audio('https://cdn.freesound.org/previews/67/67496_634166-lq.mp3');
     typeSound.volume = 0.2;
@@ -381,3 +407,4 @@ Connected as: ${cleanUsername}
 </script>
 </body>
 </html>
+
