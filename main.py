@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 import json
 from typing import Dict
 
-from users import users  # فرض: users.py وجود داره
+from users import users  
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -99,61 +99,4 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
 
 
 
-voice_manager = ConnectionManager()
-
-@app.get("/voice", response_class=HTMLResponse)
-async def voice_room(request: Request):
-    return templates.TemplateResponse("voice.html", {"request": request})
-
-@app.websocket("/voice-ws/{username}")
-async def voice_websocket(websocket: WebSocket, username: str):
-    clean_username = ''.join(c for c in username if c.isalnum() or c in 'آابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهی ')
-    clean_username = clean_username.strip()
-    if not clean_username or clean_username not in users:
-        await websocket.close(code=1008, reason="Invalid username")
-        return
-
-    await voice_manager.connect(clean_username, websocket)
-
-    await voice_manager.broadcast(json.dumps({
-        "type": "users",
-        "users": list(voice_manager.active_connections.keys())
-    }))
-
-    for other_username in voice_manager.active_connections:
-        if other_username != clean_username:
-            await voice_manager.active_connections[other_username].send_text(json.dumps({
-                "type": "new-user",
-                "username": clean_username
-            }))
-
-    try:
-        while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-
-           
-            if msg.get("type") == "joined":
-                for other_username in voice_manager.active_connections:
-                    if other_username != clean_username:
-                        await voice_manager.active_connections[other_username].send_text(json.dumps({
-                            "type": "new-user",
-                            "username": clean_username
-                        }))
-
-
-            elif msg["type"] in ["offer", "answer", "ice"]:
-                target = msg.get("target")
-                if target and target in voice_manager.active_connections:
-                    await voice_manager.active_connections[target].send_text(json.dumps({
-                        **msg,
-                        "from": clean_username
-                    }))
-
-    except WebSocketDisconnect:
-        voice_manager.disconnect(clean_username)
-        await voice_manager.broadcast(json.dumps({
-            "type": "users",
-            "users": list(voice_manager.active_connections.keys())
-        }))
 
