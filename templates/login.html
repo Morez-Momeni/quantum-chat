@@ -1,34 +1,191 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>ورود | {{ username }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root { --primary: #00d4ff; --bg: #0a0a1e; --card: rgba(20,20,40,0.7); --text: #e0e7ff; --error: #ff6b6b; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Vazirmatn', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-        .login-card { background: var(--card); backdrop-filter: blur(12px); border-radius: 20px; padding: 2rem; width: 100%; max-width: 400px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); text-align: center; }
-        h1 { font-size: 1.8rem; margin-bottom: 1.5rem; background: linear-gradient(90deg, var(--primary), #7c3aed); -webkit-background-clip: text; color: transparent; }
-        form { display: flex; flex-direction: column; gap: 1rem; }
-        input { padding: 0.9rem 1.2rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; border-radius: 12px; font-size: 1rem; outline: none; transition: 0.3s; }
-        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,212,255,0.2); }
-        button { padding: 0.9rem; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #00b0d4; transform: translateY(-2px); }
-        button:disabled { background: #555; cursor: not-allowed; opacity: 0.7; }
-        .error { color: var(--error); margin-top: 0.5rem; font-size: 0.9rem; min-height: 1.2rem; }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Terminal Access</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --color-primary: #0f0;
+        --color-mine: #00eaff;
+        --color-bg: #000;
+        --color-header: #111;
+        --color-border: #0f0;
+        --color-text: #08f708;
+        --color-error: #f55;
+    }
+
+    body {
+        margin: 0;
+        background: var(--color-bg);
+        color: var(--color-text);
+        font-family: "Vazirmatn", monospace;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        opacity: 0;
+        transition: opacity 1s ease-out;
+    }
+
+    /* --- CRT Effects --- */
+    .crt::before {
+        content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle at center, transparent 0%, rgba(0,255,0,0.03) 100%);
+        pointer-events: none; z-index: 6000; animation: flicker 0.15s infinite alternate;
+    }
+    @keyframes flicker { 0% { opacity: 0.98; } 100% { opacity: 1; } }
+
+    .scanlines {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: repeating-linear-gradient(0deg, rgba(0,255,0,0.03), rgba(0,255,0,0.03) 1px, transparent 1px, transparent 2px);
+        pointer-events: none; z-index: 5000; animation: scan 10s linear infinite;
+    }
+    @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+
+    body::after {
+        content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: url('https://i.imgur.com/8QfQqVY.png') repeat; opacity: 0.04; mix-blend-mode: screen;
+        pointer-events: none; z-index: 7000;
+    }
+
+    /* --- Login Terminal --- */
+    .terminal {
+        background: #000;
+        border: 2px solid var(--color-primary);
+        width: 90%;
+        max-width: 500px;
+        padding: 20px;
+        box-shadow: 0 0 30px #0f0, inset 0 0 20px rgba(0,255,0,0.1);
+        text-shadow: 0 0 8px #0f0;
+        position: relative;
+        animation: bootGlow 3s infinite alternate;
+    }
+    @keyframes bootGlow { 0% { box-shadow: 0 0 20px #0f0; } 100% { box-shadow: 0 0 40px #0f0; } }
+
+    .header {
+        color: var(--color-primary);
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+        text-align: center;
+        letter-spacing: 2px;
+    }
+
+    .prompt {
+        color: var(--color-mine);
+        font-weight: bold;
+    }
+
+    input {
+        background: transparent;
+        border: none;
+        color: var(--color-text);
+        font-family: inherit;
+        font-size: 1rem;
+        outline: none;
+        width: 100%;
+        padding: 8px 0;
+        text-shadow: 0 0 6px #0f0;
+    }
+
+    input::placeholder {
+        color: #0a0;
+        opacity: 0.7;
+    }
+
+    .input-line {
+        display: flex;
+        align-items: center;
+        margin: 15px 0;
+        white-space: pre;
+    }
+
+    button {
+        background: var(--color-primary);
+        color: #000;
+        border: none;
+        padding: 10px 20px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 20px;
+        font-size: 1rem;
+        transition: 0.3s;
+        box-shadow: 0 0 15px #0f0;
+    }
+    button:hover {
+        background: var(--color-mine);
+        transform: translateY(-3px);
+        box-shadow: 0 0 25px #0ff;
+    }
+    button:disabled {
+        background: #333;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    .error {
+        color: var(--color-error);
+        margin-top: 10px;
+        font-size: 0.9rem;
+        min-height: 20px;
+        text-shadow: 0 0 8px #f55;
+        animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 0.8; } 50% { opacity: 1; } }
+
+    .cursor {
+        display: inline-block;
+        width: 10px;
+        height: 20px;
+        background: var(--color-primary);
+        margin-right: 5px;
+        animation: blink 0.8s infinite;
+    }
+    @keyframes blink { 0%,50% { opacity:1 } 51%,100% { opacity:0 } }
+
+    .logo {
+        font-size: 2rem;
+        color: var(--color-primary);
+        text-align: center;
+        margin-bottom: 20px;
+        text-shadow: 0 0 20px #0f0;
+        animation: glitch 4s infinite;
+    }
+    @keyframes glitch {
+        0%,100% { text-shadow: 0 0 20px #0f0; }
+        2% { text-shadow: 2px 2px #f00, -2px -2px #0ff; }
+        4% { text-shadow: -2px -2px #f00, 2px 2px #0ff; }
+    }
+</style>
 </head>
-<body>
-    <div class="login-card">
-        <h1>سلام {{ username }}!</h1>
-        <form id="loginForm">
-            <input type="password" id="password" placeholder="رمز عبور..." required />
-            <button type="submit" id="loginBtn">ورود به چت</button>
-            <p class="error" id="error"></p>
-        </form>
-    </div>
+<body class="crt">
+
+<div class="scanlines"></div>
+
+<div class="terminal">
+    <div class="logo">Q U A N T U M // T E R M I N A L</div>
+    <div class="header">>>> ACCESS CONTROL SYSTEM v9.9</div>
+    
+    <div style="color:#0b0; margin:15px 0;">[INIT] Initializing quantum encryption matrix... OK</div>
+    <div style="color:#0b0;">[AUTH] User detected: <span style="color:#00eaff;">{{ username }}</span></div>
+    <div style="color:#0b0; margin-bottom:20px;">[SEC] Waiting for access key...</div>
+
+    <form id="loginForm">
+        <div class="input-line">
+            <span class="prompt">[root@quantum ~]$</span>
+            <input type="password" id="password" placeholder="enter master key..." autocomplete="off" required />
+            <span class="cursor"></span>
+        </div>
+
+        <div style="text-align:center;">
+            <button type="submit" id="loginBtn">EXECUTE ACCESS</button>
+        </div>
+
+        <div class="error" id="error"></div>
+    </form>
+</div>
 
 <script>
     const form = document.getElementById("loginForm");
@@ -42,12 +199,23 @@
         .replace(/\s+/g, ' ')
         .trim();
 
-    console.log("Login page - Raw:", rawUsername, "Clean:", cleanUsername);
+    console.log("Login Terminal - Raw:", rawUsername, "Clean:", cleanUsername);
 
     if (!cleanUsername) {
         alert("نام کاربری نامعتبر!");
         window.location.href = "/";
     }
+
+    // صدای تایپ
+    const typeSound = new Audio('https://cdn.freesound.org/previews/67/67496_634166-lq.mp3');
+    typeSound.volume = 0.15;
+
+    passwordInput.addEventListener("keydown", (e) => {
+        if (e.key.length === 1) {
+            typeSound.currentTime = 0;
+            typeSound.play().catch(() => {});
+        }
+    });
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -55,7 +223,7 @@
         if (!password) return;
 
         loginBtn.disabled = true;
-        loginBtn.textContent = "در حال ورود...";
+        loginBtn.textContent = "VERIFYING KEY...";
         error.textContent = "";
 
         try {
@@ -64,29 +232,34 @@
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: `password=${encodeURIComponent(password)}`
             });
-
             const data = await res.json();
 
             if (data.success) {
                 localStorage.setItem("username", cleanUsername);
-                console.log("Saved to localStorage:", cleanUsername);
-                window.location.href = "/chat";
+                document.body.style.opacity = '0';
+                setTimeout(() => {
+                    window.location.href = "/chat";
+                }, 800);
             } else {
-                error.textContent = data.error || "رمز اشتباه است!";
+                error.textContent = data.error || "ACCESS DENIED — INVALID KEY";
                 loginBtn.disabled = false;
-                loginBtn.textContent = "ورود به چت";
+                loginBtn.textContent = "EXECUTE ACCESS";
+                passwordInput.focus();
             }
         } catch (err) {
-            error.textContent = "خطا در اتصال";
+            error.textContent = "CONNECTION LOST — RETRY";
             loginBtn.disabled = false;
-            loginBtn.textContent = "ورود به چت";
+            loginBtn.textContent = "EXECUTE ACCESS";
         }
     });
 
-    passwordInput.focus();
+    // بوت انیمیشن
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            document.body.style.opacity = '1';
+            passwordInput.focus();
+        }, 800);
+    });
 </script>
 </body>
 </html>
-
-
-
