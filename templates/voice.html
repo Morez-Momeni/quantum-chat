@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Voice Room</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    :root { --g:#0f0; --c:#00eaff; --bg:#000; }
+    body { margin:0; background:var(--bg); color:var(--g); font-family:"Vazirmatn",monospace; height:100vh; overflow:hidden; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 1s; }
+    canvas { position:fixed; top:0; left:0; z-index:1; }
+    .crt::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:repeating-linear-gradient(0deg,rgba(0,255,0,0.03),rgba(0,255,0,0.03)1px,transparent 1px,transparent 2px); pointer-events:none; z-index:9998; }
+    .crt::after { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:url('https://i.imgur.com/8QfQqVY.png') repeat; opacity:0.04; mix-blend-mode:screen; pointer-events:none; z-index:9999; animation:n 0.2s steps(8) infinite; }
+    @keyframes n{0%{transform:translate(0,0)}100%{transform:translate(2px,2px)}}
+
+    .box { background:rgba(0,0,0,0.92); border:4px solid var(--g); padding:40px; width:90%; max-width:600px; text-align:center; box-shadow:0 0 70px var(--g); position:relative; z-index:10; }
+    h1 { font-size:2.8rem; letter-spacing:6px; margin-bottom:20px; animation:glitch 5s infinite; }
+    @keyframes glitch{0%,100%{text-shadow:0 0 25px var(--g)}2%{text-shadow:5px 5px #f00,-5px -5px #0ff}4%{text-shadow:-5px -5px #f00,5px 5px #0ff}}
+
+    .status { color:#0b0; font-size:1.2rem; margin:20px 0; }
+    .users { margin:30px 0; padding:15px; background:rgba(0,50,0,0.3); border:1px dashed var(--g); min-height:80px; }
+    .user { color:var(--c); margin:8px 0; font-weight:bold; }
+    button { background:var(--g); color:#000; border:none; padding:16px 50px; font-size:1.4rem; font-weight:bold; cursor:pointer; margin:15px; box-shadow:0 0 40px var(--g); transition:0.3s; }
+    button:hover { background:var(--c); transform:scale(1.05); }
+    button:disabled { background:#333; cursor:not-allowed; }
+    .cursor { display:inline-block; width:12px; height:28px; background:var(--g); margin-left:8px; animation:blink 0.8s infinite; }
+    @keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0}}
+    .mic { font-size:4rem; margin:20px; opacity:0.7; }
+</style>
+</head>
+<body class="crt">
+
+<canvas id="m"></canvas>
+
+<div class="box">
+    <h1>QUANTUM VOICE</h1>
+    <div class="status" id="status">در حال اتصال به اتاق صوتی کوانتومی...</div>
+    
+    <div class="mic">MICROPHONE</div>
+
+    <button id="joinBtn">JOIN VOICE ROOM</button>
+    <button id="leaveBtn" style="display:none;background:#f55;">MUTE & LEAVE</button>
+
+    <div class="users" id="usersList">
+        <div style="color:#080;">در حال بارگذاری کاربران...</div>
+    </div>
+
+    <div style="margin-top:30px;color:#080;font-size:0.9rem;">
+        [SYSTEM] همه کاربران لاگین‌شده می‌تونن حرف بزنن <span class="cursor"></span>
+    </div>
+</div>
+
+<script>
+    // Matrix Rain
+    const c = document.getElementById('m'); const ctx = c.getContext('2d');
+    c.width = innerWidth; c.height = innerHeight;
+    const chars = "01量子音声室";
+    const font = 16; const cols = c.width/font; const drops = Array(Math.floor(cols)).fill(1);
+    function draw(){ ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,c.width,c.height);
+        ctx.fillStyle='#0f0'; ctx.font=font+'px monospace';
+        for(let i=0;i<drops.length;i++){
+            const t=chars[Math.floor(Math.random()*chars.length)];
+            ctx.fillText(t,i*font,drops[i]*font);
+            if(drops[i]*font>c.height&&Math.random()>0.975) drops[i]=0;
+            drops[i]++;
+        }
+    } setInterval(draw,35);
+
+    // username از localStorage
+    const username = localStorage.getItem("username") || "Guest";
+    if(!username || username==="null"){ alert("اول وارد چت شو!"); location.href="/chat"; }
+
+    const wsProtocol = location.protocol==="https:"?"wss:":"ws:";
+    const ws = new WebSocket(`${wsProtocol}//${location.host}/voice-ws/${encodeURIComponent(username)}`);
+
+    const pcList = new Map(); // برای هر کاربر یه PeerConnection
+    let localStream;
+
+    const status = document.getElementById('status');
+    const usersList = document.getElementById('usersList');
+    const joinBtn = document.getElementById('joinBtn');
+    const leaveBtn = document.getElementById('leaveBtn');
+
+    ws.onopen = () => status.textContent = "متصل به سرور کوانتومی... آماده ورود";
+
+    ws.onmessage = async (e) => {
+        const data = JSON.parse(e.data);
+
+        if(data.type === "users"){
+            usersList.innerHTML = data.users.map(u => `<div class="user">> ${u}</div>`).join("") || "<div style='color:#060;'>هیچکس نیست</div>";
+        }
+
+        if(data.type === "new-user"){
+            if(data.username !== username) createPeerConnection(data.username);
+        }
+
+        if(data.type === "offer" && data.target === username){
+            const pc = createPeerConnection(data.from);
+            await pc.setRemoteDescription(data.offer);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            ws.send(JSON.stringify({type:"answer", answer, target:data.from}));
+        }
+
+        if(data.type === "answer" && pcList.has(data.from)){
+            await pcList.get(data.from).setRemoteDescription(data.answer);
+        }
+
+        if(data.type === "ice" && pcList.has(data.from)){
+            await pcList.get(data.from).addIceCandidate(data.candidate);
+        }
+    };
+
+    function createPeerConnection(peerUsername){
+        if(pcList.has(peerUsername)) return pcList.get(peerUsername);
+
+        const pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+        pcList.set(peerUsername, pc);
+
+        if(localStream){
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        }
+
+        pc.ontrack = (e) => {
+            const audio = new Audio();
+            audio.srcObject = e.streams[0];
+            audio.play();
+        };
+
+        pc.onicecandidate = (e) => {
+            if(e.candidate){
+                ws.send(JSON.stringify({type:"ice", candidate:e.candidate, target:peerUsername}));
+            }
+        };
+
+        return pc;
+    }
+
+    async function joinRoom(){
+        localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
+        status.textContent = "در اتاق صوتی هستی — همه صدات رو می‌شنون!";
+        joinBtn.style.display = "none";
+        leaveBtn.style.display = "inline-block";
+        ws.send(JSON.stringify({type:"joined"}));
+    }
+
+    function leaveRoom(){
+        if(localStream) localStream.getTracks().forEach(t=>t.stop());
+        pcList.forEach(pc=>pc.close());
+        pcList.clear();
+        ws.send(JSON.stringify({type:"left"}));
+        location.reload();
+    }
+
+    joinBtn.onclick = joinRoom;
+    leaveBtn.onclick = leaveRoom;
+
+    // Fade in
+    setTimeout(()=>{document.body.style.opacity=1},600);
+</script>
+</body>
+</html>
